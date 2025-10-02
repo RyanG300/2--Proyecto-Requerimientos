@@ -7,6 +7,7 @@ import AddGanado from './AddGanado.jsx'
 import VisualizarGanado from './VisualizarGanado.jsx'
 import VisualizarPotrero from './VisualizarPotrero.jsx'
 import VisualizarGruposPastoreo from './VisualizarGruposPastoreo.jsx'
+import AddPotreros from './AddPotreros.jsx'
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
@@ -16,6 +17,7 @@ createRoot(document.getElementById('root')).render(
       <Route path="/visualizar-ganado" element={<VisualizarGanado />} />
       <Route path="/visualizar-potrero" element={<VisualizarPotrero />} />
       <Route path="/visualizar-grupos-pastoreo" element={<VisualizarGruposPastoreo />} />
+      <Route path="/add-potreros" element={<AddPotreros />} />
     </Routes>
   </BrowserRouter>
   

@@ -107,7 +107,12 @@ function App() {
             </section>
             {/* Contenedor de potreros/lotes */}
             <section className="bg-white rounded-xl shadow-lg border-2 border-green-400 w-[520px] h-[600px] flex flex-col items-center p-8">
-              <span className="text-lg font-semibold text-green-700 mb-4">Potreros / Lotes</span>
+              {/* Titulo potreros y boton añadir*/}
+              <div className="w-full flex items-center justify-between mb-4">
+                <span className="text-lg font-semibold text-green-700 mb-4">Potreros / Lotes</span>
+                <button onClick={() => navigate('/add-potreros')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition mb-4">Añadir potrero</button>
+              </div>
+              {/* Buscador potreros*/}
               <div className="w-full flex items-center border-2 border-green-300 rounded-lg mb-4 px-2 py-1 bg-gray-50">
                 <input type="text" placeholder="Buscar..." className="flex-1 bg-transparent outline-none px-2" />
                 <button className="p-1">
@@ -155,7 +160,7 @@ function App() {
             <section className="bg-white rounded-xl shadow-lg border-2 border-green-400 w-[520px] h-[400px] flex flex-col items-center p-8">
               <div className="w-full flex items-center justify-between mb-4">
                 <span className="text-lg font-semibold text-green-700">Grupos de pastoreo</span>
-                <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Crear grupo</button>
+                <button className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Crear grupo</button>
               </div>
               <div className="w-full flex items-center border-2 border-green-300 rounded-lg mb-4 px-2 py-1 bg-gray-50">
                 <input type="text" placeholder="Buscar grupo..." className="flex-1 bg-transparent outline-none px-2" />
