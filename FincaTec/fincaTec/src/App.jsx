@@ -149,6 +149,53 @@ function App() {
                 </div>
             </section>
           </div>
+          {/* Nueva fila de rectángulos abajo */}
+          <div className="flex flex-row justify-between w-full max-w-6xl mx-auto gap-12">
+            {/* Rectángulo de grupos de pastoreo */}
+            <section className="bg-white rounded-xl shadow-lg border-2 border-green-400 w-[520px] h-[400px] flex flex-col items-center p-8">
+              <div className="w-full flex items-center justify-between mb-4">
+                <span className="text-lg font-semibold text-green-700">Grupos de pastoreo</span>
+                <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Crear grupo</button>
+              </div>
+              <div className="w-full flex items-center border-2 border-green-300 rounded-lg mb-4 px-2 py-1 bg-gray-50">
+                <input type="text" placeholder="Buscar grupo..." className="flex-1 bg-transparent outline-none px-2" />
+                <button className="p-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" /></svg>
+                </button>
+              </div>
+              {/* Lista de grupos de pastoreo */}
+              <div className="w-full flex-1 overflow-y-auto">
+                {/* Grupo 1 */}
+                <div className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
+                  <div className="flex-1">
+                    <div className="font-bold text-green-800">ID Grupo: G-001</div>
+                    <div className="text-sm text-gray-700">Especie: Bovino</div>
+                  </div>
+                  <button onClick={() => navigate('/visualizar-grupos-pastoreo')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Visualizar</button>
+                </div>
+                {/* Grupo 2 */}
+                <div className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
+                  <div className="flex-1">
+                    <div className="font-bold text-green-800">ID Grupo: G-002</div>
+                    <div className="text-sm text-gray-700">Especie: Ovino</div>
+                  </div>
+                  <button onClick={() => navigate('/visualizar-grupos-pastoreo')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Visualizar</button>
+                </div>
+                {/* Grupo 3 */}
+                <div className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
+                  <div className="flex-1">
+                    <div className="font-bold text-green-800">ID Grupo: G-003</div>
+                    <div className="text-sm text-gray-700">Especie: Caprino</div>
+                  </div>
+                  <button onClick={() => navigate('/visualizar-grupos-pastoreo')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Visualizar</button>
+                </div>
+              </div>
+            </section>
+            {/* Segundo rectángulo vacío para futuro uso */}
+            <section className="bg-white rounded-xl shadow-lg border-2 border-green-400 w-[520px] h-[400px] flex flex-col items-center p-8">
+              {/* Puedes agregar contenido aquí más adelante */}
+            </section>
+          </div>
         </main>
 
         {/* Separador */}
@@ -161,7 +208,6 @@ function App() {
       </div>
 
       {/* ...resto de la interfaz demo... */}
-      
     </>
   )
 }
