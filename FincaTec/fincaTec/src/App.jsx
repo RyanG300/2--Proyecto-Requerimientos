@@ -4,14 +4,21 @@ import viteLogo from '/vite.svg'
 import { useNavigate } from 'react-router-dom';
 //import './App.css'
 
+// Importar datos reales
+import { GANADO } from './data'
+
 // Importar los iconos del menú
 //import iconoPerfil from 'images/Menu_finqueros/icono_perfil.png'
 //import iconoSalir from 'images/Menu_finqueros/icono_salir.png'
 
-
 function App() {
   const [count, setCount] = useState(0)
   const navigate = useNavigate();
+
+  // Aplana todas las especies en una sola lista, conservando el nombre de la especie
+  const listaGanado = Object.entries(GANADO).flatMap(([especie, arr]) =>
+    arr.map(item => ({ ...item, especie }))
+  );
 
   return (
     <>
@@ -65,46 +72,34 @@ function App() {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" /></svg>
                 </button>
               </div>
-              {/* Lista de ganado registrado */}
+
+              {/* Lista de ganado registrado - AHORA DINÁMICO CON TU DATA */}
               <div className="w-full flex-1 overflow-y-auto">
-                {/* Ganado 1 */}
-                <div className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
-                  <img src="images/Ganado_Relleno/toro_1.png" alt="Toro" className="w-20 h-20 object-cover rounded-lg border border-green-300" />
-                  <div className="flex-1">
-                    <div className="font-bold text-green-800">Nombre: Toro Bravo</div>
-                    <div className="text-sm text-gray-700">ID: 001</div>
-                    <div className="text-sm text-gray-700">Especie: Bovino</div>
-                    <div className="text-sm text-gray-700">Raza: Brahman</div>
-                    <div className="text-sm text-gray-700">Sexo: Macho</div>
+                {listaGanado.map((animal) => (
+                  <div key={animal.id} className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
+                    <img
+                      src={animal.foto}               // viene como /images/...
+                      alt={animal.nombre}
+                      className="w-20 h-20 object-cover rounded-lg border border-green-300"
+                    />
+                    <div className="flex-1">
+                      <div className="font-bold text-green-800">Nombre: {animal.nombre}</div>
+                      <div className="text-sm text-gray-700">ID: {animal.id}</div>
+                      <div className="text-sm text-gray-700">Especie: {animal.especie}</div>
+                      <div className="text-sm text-gray-700">Raza: {animal.raza}</div>
+                      <div className="text-sm text-gray-700">Sexo: {animal.sexo}</div>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/visualizar-ganado/${animal.id}`)}
+                      className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition"
+                    >
+                      Visualizar
+                    </button>
                   </div>
-                  <button onClick={() => navigate('/visualizar-ganado')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Visualizar</button>
-                </div>
-                {/* Ganado 2 */}
-                <div className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
-                  <img src="images/Ganado_Relleno/vaca_1.png" alt="Vaca" className="w-20 h-20 object-cover rounded-lg border border-green-300" />
-                  <div className="flex-1">
-                    <div className="font-bold text-green-800">Nombre: Vaca Linda</div>
-                    <div className="text-sm text-gray-700">ID: 002</div>
-                    <div className="text-sm text-gray-700">Especie: Bovino</div>
-                    <div className="text-sm text-gray-700">Raza: Holstein</div>
-                    <div className="text-sm text-gray-700">Sexo: Hembra</div>
-                  </div>
-                  <button onClick={() => navigate('/visualizar-ganado')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Visualizar</button>
-                </div>
-                {/* Ganado 3 */}
-                <div className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
-                  <img src="images/Ganado_Relleno/vaca_2.png" alt="Vaca" className="w-20 h-20 object-cover rounded-lg border border-green-300" />
-                  <div className="flex-1">
-                    <div className="font-bold text-green-800">Nombre: Vaca Serena</div>
-                    <div className="text-sm text-gray-700">ID: 003</div>
-                    <div className="text-sm text-gray-700">Especie: Bovino</div>
-                    <div className="text-sm text-gray-700">Raza: Jersey</div>
-                    <div className="text-sm text-gray-700">Sexo: Hembra</div>
-                  </div>
-                  <button onClick={() => navigate('/visualizar-ganado')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Visualizar</button>
-                </div>
+                ))}
               </div>
             </section>
+
             {/* Contenedor de potreros/lotes */}
             <section className="bg-white rounded-xl shadow-lg border-2 border-green-400 w-[520px] h-[600px] flex flex-col items-center p-8">
               {/* Titulo potreros y boton añadir*/}
@@ -119,41 +114,42 @@ function App() {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" /></svg>
                 </button>
               </div>
-                {/* Lista de potreros registrados */}
-                <div className="w-full flex-1 overflow-y-auto">
-                  {/* Potrero 1 */}
-                  <div className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
-                    <img src="images/Potreros_relleno/potrero_1.png" alt="Potrero 1" className="w-20 h-20 object-cover rounded-lg border border-green-300" />
-                    <div className="flex-1">
-                      <div className="text-xl font-bold text-green-900 mb-1">Potrero La Esperanza</div>
-                      <div className="font-bold text-green-800">Capacidad: 30 cabezas</div>
-                      <div className="text-sm text-gray-700">Ubicación: Norte</div>
-                    </div>
-                    <button onClick={() => navigate('/visualizar-potrero')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Detalles</button>
+              {/* Lista de potreros registrados */}
+              <div className="w-full flex-1 overflow-y-auto">
+                {/* Potrero 1 */}
+                <div className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
+                  <img src="images/Potreros_relleno/potrero_1.png" alt="Potrero 1" className="w-20 h-20 object-cover rounded-lg border border-green-300" />
+                  <div className="flex-1">
+                    <div className="text-xl font-bold text-green-900 mb-1">Potrero La Esperanza</div>
+                    <div className="font-bold text-green-800">Capacidad: 30 cabezas</div>
+                    <div className="text-sm text-gray-700">Ubicación: Norte</div>
                   </div>
-                  {/* Potrero 2 */}
-                  <div className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
-                    <img src="images/Potreros_relleno/potrero_2.png" alt="Potrero 2" className="w-20 h-20 object-cover rounded-lg border border-green-300" />
-                    <div className="flex-1">
-                      <div className="text-xl font-bold text-green-900 mb-1">Potrero El Roble</div>
-                      <div className="font-bold text-green-800">Capacidad: 25 cabezas</div>
-                      <div className="text-sm text-gray-700">Ubicación: Sur</div>
-                    </div>
-                    <button onClick={() => navigate('/visualizar-potrero')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Detalles</button>
-                  </div>
-                  {/* Potrero 3 */}
-                  <div className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
-                    <img src="images/Potreros_relleno/potrero_3.png" alt="Potrero 3" className="w-20 h-20 object-cover rounded-lg border border-green-300" />
-                    <div className="flex-1">
-                      <div className="text-xl font-bold text-green-900 mb-1">Potrero Las Palmas</div>
-                      <div className="font-bold text-green-800">Capacidad: 40 cabezas</div>
-                      <div className="text-sm text-gray-700">Ubicación: Este</div>
-                    </div>
-                    <button onClick={() => navigate('/visualizar-potrero')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Detalles</button>
-                  </div>
+                  <button onClick={() => navigate('/visualizar-potrero')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Detalles</button>
                 </div>
+                {/* Potrero 2 */}
+                <div className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
+                  <img src="images/Potreros_relleno/potrero_2.png" alt="Potrero 2" className="w-20 h-20 object-cover rounded-lg border border-green-300" />
+                  <div className="flex-1">
+                    <div className="text-xl font-bold text-green-900 mb-1">Potrero El Roble</div>
+                    <div className="font-bold text-green-800">Capacidad: 25 cabezas</div>
+                    <div className="text-sm text-gray-700">Ubicación: Sur</div>
+                  </div>
+                  <button onClick={() => navigate('/visualizar-potrero')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Detalles</button>
+                </div>
+                {/* Potrero 3 */}
+                <div className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
+                  <img src="images/Potreros_relleno/potrero_3.png" alt="Potrero 3" className="w-20 h-20 object-cover rounded-lg border border-green-300" />
+                  <div className="flex-1">
+                    <div className="text-xl font-bold text-green-900 mb-1">Potrero Las Palmas</div>
+                    <div className="font-bold text-green-800">Capacidad: 40 cabezas</div>
+                    <div className="text-sm text-gray-700">Ubicación: Este</div>
+                  </div>
+                  <button onClick={() => navigate('/visualizar-potrero')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Detalles</button>
+                </div>
+              </div>
             </section>
           </div>
+
           {/* Nueva fila de rectángulos abajo */}
           <div className="flex flex-row justify-between w-full max-w-6xl mx-auto gap-12">
             {/* Rectángulo de grupos de pastoreo */}
@@ -176,7 +172,8 @@ function App() {
                     <div className="font-bold text-green-800">ID Grupo: G-001</div>
                     <div className="text-sm text-gray-700">Especie: Bovino</div>
                   </div>
-                  <button onClick={() => navigate('/visualizar-grupos-pastoreo')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Visualizar</button>
+                  {/* CAMBIO: navegar al tipo "Bovino" */}
+                  <button onClick={() => navigate('/visualizar-grupos-pastoreo/Bovino')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Visualizar</button>
                 </div>
                 {/* Grupo 2 */}
                 <div className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
@@ -184,7 +181,8 @@ function App() {
                     <div className="font-bold text-green-800">ID Grupo: G-002</div>
                     <div className="text-sm text-gray-700">Especie: Ovino</div>
                   </div>
-                  <button onClick={() => navigate('/visualizar-grupos-pastoreo')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Visualizar</button>
+                  {/* CAMBIO: navegar al tipo "Ovino" */}
+                  <button onClick={() => navigate('/visualizar-grupos-pastoreo/Ovino')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Visualizar</button>
                 </div>
                 {/* Grupo 3 */}
                 <div className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
@@ -192,7 +190,8 @@ function App() {
                     <div className="font-bold text-green-800">ID Grupo: G-003</div>
                     <div className="text-sm text-gray-700">Especie: Caprino</div>
                   </div>
-                  <button onClick={() => navigate('/visualizar-grupos-pastoreo')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Visualizar</button>
+                  {/* CAMBIO: navegar al tipo "Caprino" */}
+                  <button onClick={() => navigate('/visualizar-grupos-pastoreo/Caprino')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Visualizar</button>
                 </div>
               </div>
             </section>
@@ -205,7 +204,7 @@ function App() {
 
         {/* Separador */}
         <div className="size-15"></div>
-        
+
         {/* Footer */}
         <footer className="bottom-0 left-0 w-full bg-gradient-to-r from-green-500 via-green-400 to-green-300 text-white text-center py-3 shadow-lg font-semibold tracking-wide">
           <p>&copy; 2025 FincaTec. All rights reserved.</p>
@@ -218,26 +217,3 @@ function App() {
 }
 
 export default App
-
-/*
-<div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-*/ 

@@ -1,6 +1,7 @@
+// src/main.jsx
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 import AddGanado from './AddGanado.jsx'
@@ -14,14 +15,29 @@ createRoot(document.getElementById('root')).render(
     <Routes>
       <Route path="/" element={<App />} />
       <Route path="/add-ganado" element={<AddGanado />} />
+
+      {/* permite ver un animal por su ID (B-001, B-002, O-001, etc.) */}
+      <Route path="/visualizar-ganado/:id" element={<VisualizarGanado />} />
+      {/* Compatibilidad con la ruta anterior sin ID */}
       <Route path="/visualizar-ganado" element={<VisualizarGanado />} />
+
       <Route path="/visualizar-potrero" element={<VisualizarPotrero />} />
-      <Route path="/visualizar-grupos-pastoreo" element={<VisualizarGruposPastoreo />} />
+
+      {/* Ruta con parámetro :tipo para Bovino | Ovino | Caprino */}
+      <Route path="/visualizar-grupos-pastoreo/:tipo" element={<VisualizarGruposPastoreo />} />
+
       <Route path="/add-potreros" element={<AddPotreros />} />
     </Routes>
   </BrowserRouter>
-  
 )
 
 /*
-onClick={() => navigate('/visualizar-grupos-pastoreo')}*/ 
+Ahora, en tu listado de "Cabezas de ganado",
+haz que cada botón navegue con su ID, por ejemplo:
+  navigate('/visualizar-ganado/B-001')
+  navigate('/visualizar-ganado/B-002')
+  navigate('/visualizar-ganado/B-003')
+
+Y dentro de VisualizarGanado, usa useParams() para leer `id`
+y buscarlo en el objeto GANADO.
+*/
