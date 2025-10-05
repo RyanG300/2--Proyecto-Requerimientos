@@ -71,6 +71,16 @@ export default function VisualizarGruposPastoreo() {
                   <span className="font-semibold">Peso:</span>{" "}
                   {animal.pesoKg} kg
                 </li>
+
+                {/* 🐮 Tipo de alimentación */}
+                <li className="mt-2">
+                  <span className="font-semibold text-green-700">
+                    Tipo de alimentación:
+                  </span>{" "}
+                  <span className="italic text-gray-800">
+                    {animal.tipoAlimentacion || "No especificado"}
+                  </span>
+                </li>
               </ul>
             </article>
           ))}

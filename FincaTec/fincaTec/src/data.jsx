@@ -1,4 +1,4 @@
-//Provincias y cantones de Costa Rica
+// Provincias y cantones de Costa Rica
 export const provincias = [
   {
     id: 0,
@@ -61,6 +61,7 @@ export const provincias = [
   }
 ];
 
+// Ganado con tipo de alimentación
 export const GANADO = {
   Bovino: [
     {
@@ -71,6 +72,7 @@ export const GANADO = {
       fechaNacimiento: "2022-03-15",
       potreroActual: "Potrero La Esperanza",
       pesoKg: 350,
+      tipoAlimentacion: "Pastoreo (gramíneas, forraje y suplementación mineral)",
       foto: "/images/Ganado_Bovino/vaca1.jpg",
     },
     {
@@ -81,6 +83,7 @@ export const GANADO = {
       fechaNacimiento: "2021-11-03",
       potreroActual: "Potrero El Cedral",
       pesoKg: 420,
+      tipoAlimentacion: "Forraje verde, heno, ensilaje y concentrado lácteo",
       foto: "/images/Ganado_Bovino/vaca2.jpg",
     },
     {
@@ -91,6 +94,7 @@ export const GANADO = {
       fechaNacimiento: "2023-01-20",
       potreroActual: "Potrero La Pradera",
       pesoKg: 280,
+      tipoAlimentacion: "Pastoreo libre y suplementos energéticos",
       foto: "/images/Ganado_Bovino/vaca3.jpg",
     },
     {
@@ -101,6 +105,7 @@ export const GANADO = {
       fechaNacimiento: "2020-07-08",
       potreroActual: "Potrero Las Palmas",
       pesoKg: 480,
+      tipoAlimentacion: "Pastoreo intensivo y suplemento proteico",
       foto: "/images/Ganado_Bovino/vaca4.jpg",
     },
   ],
@@ -113,6 +118,7 @@ export const GANADO = {
       fechaNacimiento: "2023-04-04",
       potreroActual: "Potrero La Esperanza",
       pesoKg: 55,
+      tipoAlimentacion: "Pastoreo de pastos cortos, leguminosas y heno",
       foto: "/images/Ganado_Ovino/oveja1.jpg",
     },
     {
@@ -123,6 +129,7 @@ export const GANADO = {
       fechaNacimiento: "2022-09-12",
       potreroActual: "Potrero El Cedral",
       pesoKg: 62,
+      tipoAlimentacion: "Forraje natural con concentrado en crecimiento",
       foto: "/images/Ganado_Ovino/oveja2.jpg",
     },
     {
@@ -133,6 +140,7 @@ export const GANADO = {
       fechaNacimiento: "2021-12-30",
       potreroActual: "Potrero La Pradera",
       pesoKg: 60,
+      tipoAlimentacion: "Pastoreo mixto con granos y sales minerales",
       foto: "/images/Ganado_Ovino/oveja3.jpg",
     },
     {
@@ -143,6 +151,7 @@ export const GANADO = {
       fechaNacimiento: "2020-05-22",
       potreroActual: "Potrero Las Palmas",
       pesoKg: 68,
+      tipoAlimentacion: "Pastoreo y suplemento proteico durante lactancia",
       foto: "/images/Ganado_Ovino/oveja4.jpg",
     },
   ],
@@ -155,6 +164,7 @@ export const GANADO = {
       fechaNacimiento: "2022-02-10",
       potreroActual: "Potrero La Esperanza",
       pesoKg: 45,
+      tipoAlimentacion: "Hojas de arbustos, pasto tierno y concentrado lechero",
       foto: "/images/Ganado_Caprino/cabra1.jpg",
     },
     {
@@ -165,6 +175,7 @@ export const GANADO = {
       fechaNacimiento: "2021-06-14",
       potreroActual: "Potrero El Cedral",
       pesoKg: 70,
+      tipoAlimentacion: "Pastoreo de gramíneas y suplemento energético",
       foto: "/images/Ganado_Caprino/cabra2.jpg",
     },
     {
@@ -175,6 +186,7 @@ export const GANADO = {
       fechaNacimiento: "2023-03-05",
       potreroActual: "Potrero La Pradera",
       pesoKg: 43,
+      tipoAlimentacion: "Forraje variado, hojas y concentrado diario",
       foto: "/images/Ganado_Caprino/cabra3.jpg",
     },
     {
@@ -185,9 +197,8 @@ export const GANADO = {
       fechaNacimiento: "2020-08-28",
       potreroActual: "Potrero Las Palmas",
       pesoKg: 75,
+      tipoAlimentacion: "Pastoreo libre, ramas y mezcla proteica",
       foto: "/images/Ganado_Caprino/cabra4.jpg",
     },
   ],
 };
-
-
