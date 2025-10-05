@@ -9,11 +9,23 @@ import VisualizarGanado from './VisualizarGanado.jsx'
 import VisualizarPotrero from './VisualizarPotrero.jsx'
 import VisualizarGruposPastoreo from './VisualizarGruposPastoreo.jsx'
 import AddPotreros from './AddPotreros.jsx'
+import MainMenu from './mainMenu.jsx'
+import Login from './Login.jsx'
+import Register from './Register.jsx'
+import CompanyView from './CompanyView.jsx'
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
     <Routes>
-      <Route path="/" element={<App />} />
+      {/* Ruta principal, login, register */}
+      <Route path="/" element={<MainMenu />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+
+      {/*Company view*/}
+      <Route path="/company-view" element={<CompanyView/>} />
+
+      <Route path="/App" element={<App />} />
       <Route path="/add-ganado" element={<AddGanado />} />
 
       {/* permite ver un animal por su ID (B-001, B-002, O-001, etc.) */}
