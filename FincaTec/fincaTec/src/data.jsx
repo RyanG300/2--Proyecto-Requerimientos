@@ -61,7 +61,32 @@ export const provincias = [
   }
 ];
 
-// Ganado con tipo de alimentación
+// 🟩 Alimentación base por tipo de grupo
+export const ALIMENTACION_POR_TIPO = {
+  Bovino: {
+    tipo: "Pastoreo (gramíneas/forraje) + suplemento mineral",
+    cantidad: "8–12 kg MS/día (según peso y producción)",
+    horario: "Mañana y tarde",
+    suplemento: "Mezcla mineral ad libitum",
+    observaciones: "Ajustar ración en lactancia / engorde",
+  },
+  Ovino: {
+    tipo: "Pastoreo de pastos cortos y leguminosas + heno",
+    cantidad: "2–4 kg MS/día",
+    horario: "Dos tomas",
+    suplemento: "Concentrado en crecimiento/lactancia",
+    observaciones: "Evitar empaste; rotación de potreros",
+  },
+  Caprino: {
+    tipo: "Ramoneo (arbustos/hojas) + pasto tierno y concentrado",
+    cantidad: "2–3 kg MS/día",
+    horario: "Mañana y tarde",
+    suplemento: "Sales minerales específicas caprinas",
+    observaciones: "Vigilancia de parásitos gastrointestinales",
+  },
+};
+
+// 🐄🐑🐐 Ganado por tipo
 export const GANADO = {
   Bovino: [
     {
