@@ -2,7 +2,6 @@ import { useState } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import { useNavigate } from 'react-router-dom';
-import { useUser } from './UserContext';
 //import './App.css'
 
 // Importar datos reales
@@ -15,15 +14,6 @@ import { GANADO } from './data'
 function App() {
   const [count, setCount] = useState(0)
   const navigate = useNavigate();
-  const { user, logout } = useUser();
-
-  // Función para manejar logout
-  const handleLogout = () => {
-    if (window.confirm('¿Estás seguro de que quieres cerrar sesión?')) {
-      logout();
-      navigate('/');
-    }
-  };
 
   // Aplana todas las especies en una sola lista, conservando el nombre de la especie
   const listaGanado = Object.entries(GANADO).flatMap(([especie, arr]) =>
@@ -41,9 +31,7 @@ function App() {
           <div className="flex-1 flex items-center justify-center">
             <div className="flex items-center gap-3 px-6 py-2 rounded-full bg-gradient-to-r from-green-200 via-green-100 to-green-300 shadow-lg border border-green-400">
               <svg className="w-7 h-7 text-green-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-7 8-7s8 3 8 7"/></svg>
-              <span className="text-xl font-bold text-green-900 tracking-wide">
-                ¡Bienvenido, {user?.name || user?.email || 'Usuario'}!
-              </span>
+              <span className="text-xl font-bold text-green-900 tracking-wide">¡Bienvenido, Juan Pérez!</span>
             </div>
           </div>
           <div className="flex gap-4 items-center">
@@ -51,10 +39,7 @@ function App() {
               <img src="images/Menu_finqueros/icono_perfil.png" alt="Perfil" className="w-10 h-10" />
               <span className="font-bold text-green-700">Perfil</span>
             </button>
-            <button 
-              onClick={handleLogout}
-              className="bg-white hover:bg-red-200 rounded-xl flex flex-col items-center shadow px-2 py-1 transition"
-            >
+            <button className="bg-white hover:bg-blue-200 rounded-xl flex flex-col items-center shadow px-2 py-1 transition">
               <img src="images/Menu_finqueros/icono_salir.png" alt="Salir" className="w-10 h-10" />
               <span className="font-bold text-green-700">Salir</span>
             </button>

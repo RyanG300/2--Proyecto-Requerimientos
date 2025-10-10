@@ -1,40 +1,23 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useUser } from "./UserContext";
 
 function Login() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
-    const { login } = useUser();
 
-    const handleLogin = async (e) => {
+    const handleLogin = (e) => {
         e.preventDefault();
-        setIsLoading(true);
-        
-        try {
-            const users = JSON.parse(localStorage.getItem("users")) || [];
-            const user = users.find(
-                (u) => u.email === email && u.password === password
-            );
+        const users = JSON.parse(localStorage.getItem("users")) || [];
+        const user = users.find(
+            (u) => u.email === email && u.password === password
+        );
 
-            if (user) {
-                // Usar el contexto para hacer login
-                const loginSuccess = login(user);
-                if (loginSuccess) {
-                    navigate("/company-view");
-                } else {
-                    alert("Error al iniciar sesión. Intente nuevamente.");
-                }
-            } else {
-                alert("Correo o contraseña incorrectos.");
-            }
-        } catch (error) {
-            console.error("Error durante el login:", error);
-            alert("Error al iniciar sesión. Intente nuevamente.");
-        } finally {
-            setIsLoading(false);
+        if (user) {
+            //alert("Login successful!");
+            navigate("/company-view");
+        } else {
+            alert("Invalid email or password.");
         }
     };
 
@@ -62,10 +45,9 @@ function Login() {
                 />
                 <button
                     type="submit"
-                    className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={isLoading}
+                    className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition mt-4"
                 >
-                    {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
+                    Iniciar sesión
                 </button>
             </form>
         </div>

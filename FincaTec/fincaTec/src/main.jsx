@@ -13,34 +13,81 @@ import MainMenu from './mainMenu.jsx'
 import Login from './Login.jsx'
 import Register from './Register.jsx'
 import CompanyView from './CompanyView.jsx'
+import { UserProvider } from './UserContext.jsx'
+import ProtectedRoute from './ProtectedRoute.jsx'
+import Perfil from './Perfil.jsx'
 
 createRoot(document.getElementById('root')).render(
-  <BrowserRouter>
-    <Routes>
-      {/* Ruta principal, login, register */}
-      <Route path="/" element={<MainMenu />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+  <StrictMode>
+    <UserProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Ruta principal, login, register */}
+          <Route path="/" element={<MainMenu />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-      {/*Company view*/}
-      <Route path="/company-view" element={<CompanyView/>} />
+          {/* Rutas protegidas */}
+          <Route path="/company-view" element={
+            <ProtectedRoute>
+              <CompanyView/>
+            </ProtectedRoute>
+          } />
 
-      <Route path="/App" element={<App />} />
-      <Route path="/add-ganado" element={<AddGanado />} />
+          <Route path="/App" element={
+            <ProtectedRoute>
+              <App />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/add-ganado" element={
+            <ProtectedRoute>
+              <AddGanado />
+            </ProtectedRoute>
+          } />
 
-      {/* permite ver un animal por su ID (B-001, B-002, O-001, etc.) */}
-      <Route path="/visualizar-ganado/:id" element={<VisualizarGanado />} />
-      {/* Compatibilidad con la ruta anterior sin ID */}
-      <Route path="/visualizar-ganado" element={<VisualizarGanado />} />
+          {/* permite ver un animal por su ID (B-001, B-002, O-001, etc.) */}
+          <Route path="/visualizar-ganado/:id" element={
+            <ProtectedRoute>
+              <VisualizarGanado />
+            </ProtectedRoute>
+          } />
+          
+          {/* Compatibilidad con la ruta anterior sin ID */}
+          <Route path="/visualizar-ganado" element={
+            <ProtectedRoute>
+              <VisualizarGanado />
+            </ProtectedRoute>
+          } />
 
-      <Route path="/visualizar-potrero" element={<VisualizarPotrero />} />
+          <Route path="/visualizar-potrero" element={
+            <ProtectedRoute>
+              <VisualizarPotrero />
+            </ProtectedRoute>
+          } />
 
-      {/* Ruta con parámetro :tipo para Bovino | Ovino | Caprino */}
-      <Route path="/visualizar-grupos-pastoreo/:tipo" element={<VisualizarGruposPastoreo />} />
+          {/* Ruta con parámetro :tipo para Bovino | Ovino | Caprino */}
+          <Route path="/visualizar-grupos-pastoreo/:tipo" element={
+            <ProtectedRoute>
+              <VisualizarGruposPastoreo />
+            </ProtectedRoute>
+          } />
 
-      <Route path="/add-potreros" element={<AddPotreros />} />
-    </Routes>
-  </BrowserRouter>
+          <Route path="/add-potreros" element={
+            <ProtectedRoute>
+              <AddPotreros />
+            </ProtectedRoute>
+          } />
+          <Route path="/perfil" element={
+            <ProtectedRoute>
+              <Perfil />
+            </ProtectedRoute>
+          } />
+
+        </Routes>
+      </BrowserRouter>
+    </UserProvider>
+  </StrictMode>
 )
 
 /*
