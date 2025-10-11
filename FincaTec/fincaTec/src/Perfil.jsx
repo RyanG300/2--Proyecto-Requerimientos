@@ -23,7 +23,7 @@ function Perfil() {
                 <div className="max-w-4xl mx-auto">
                     <div className="bg-white rounded-xl shadow-lg p-8 border-2 border-green-400">
                         <h1 className="text-3xl font-bold text-green-700 mb-6 text-center">
-                            Vista de Empresa
+                            Perfil de Usuario
                         </h1>
                         
                         <div className="bg-green-50 rounded-lg p-6 mb-6">

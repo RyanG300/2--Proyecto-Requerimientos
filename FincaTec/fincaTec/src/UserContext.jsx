@@ -161,12 +161,14 @@ export const UserProvider = ({ children }) => {
     // Obtener información de la empresa del usuario
     const getUserCompany = () => {
         try {
-            if (!user || !user.companyId) {
+            if (!user) {
                 return null;
             }
 
             const companies = JSON.parse(localStorage.getItem('companies')) || [];
-            const foundCompany = companies.find(comp => comp.id === user.companyId);
+            
+            // Buscar empresa donde el usuario es miembro
+            const foundCompany = companies.find(comp => comp.members.includes(user.email));
             
             return foundCompany || null;
         } catch (error) {
@@ -184,12 +186,17 @@ export const UserProvider = ({ children }) => {
     // Salir de una empresa
     const leaveCompany = () => {
         try {
-            if (!user || !user.companyId) {
+            if (!user) {
+                return { success: false, error: 'Debes estar logueado' };
+            }
+
+            const userCompany = getUserCompany();
+            if (!userCompany) {
                 return { success: false, error: 'No perteneces a ninguna empresa' };
             }
 
             const companies = JSON.parse(localStorage.getItem('companies')) || [];
-            const companyIndex = companies.findIndex(comp => comp.id === user.companyId);
+            const companyIndex = companies.findIndex(comp => comp.id === userCompany.id);
 
             if (companyIndex !== -1) {
                 const company = companies[companyIndex];
@@ -205,17 +212,196 @@ export const UserProvider = ({ children }) => {
                 localStorage.setItem('companies', JSON.stringify(companies));
             }
 
-            // Actualizar usuario removiendo la empresa
-            const updatedUser = { ...user };
-            delete updatedUser.companyId;
-            setUser(updatedUser);
-            localStorage.setItem('loggedUser', JSON.stringify(updatedUser));
-
+            // No necesitamos actualizar el usuario ya que no guardamos companyId
             return { success: true };
         } catch (error) {
             console.error('Error al salir de empresa:', error);
             return { success: false, error: 'Error al salir de la empresa' };
         }
+    };
+
+    // === FUNCIONES PARA GANADO ===
+
+    // Verificar si un arete ya existe en la empresa
+    const checkAreteExists = (arete) => {
+        try {
+            if (!user) {
+                return false;
+            }
+
+            const userCompany = getUserCompany();
+            if (!userCompany) {
+                return false;
+            }
+
+            const livestock = JSON.parse(localStorage.getItem('livestock')) || {};
+            const companyLivestock = livestock[userCompany.id] || [];
+            
+            return companyLivestock.some(animal => animal.id === arete);
+        } catch (error) {
+            console.error('Error al verificar arete:', error);
+            return false;
+        }
+    };
+
+    // Agregar nuevo animal a la empresa
+    const addAnimal = (animalData) => {
+        try {
+            if (!user) {
+                return { success: false, error: 'Debes estar logueado para agregar ganado' };
+            }
+
+            const userCompany = getUserCompany();
+            if (!userCompany) {
+                return { success: false, error: 'Debes pertenecer a una empresa para agregar ganado' };
+            }
+
+            // Verificar que el arete no esté repetido
+            if (checkAreteExists(animalData.identificacion)) {
+                return { success: false, error: `El arete "${animalData.identificacion}" ya está registrado en tu empresa` };
+            }
+
+            const livestock = JSON.parse(localStorage.getItem('livestock')) || {};
+            const companyId = userCompany.id;
+            
+            // Inicializar array de la empresa si no existe
+            if (!livestock[companyId]) {
+                livestock[companyId] = [];
+            }
+
+            const newAnimal = {
+                id: animalData.identificacion, // Usar el arete como ID
+                identificacion: animalData.identificacion, // Mantener también este campo para compatibilidad
+                nombre: animalData.nombre || `Animal ${animalData.identificacion}`,
+                especie: animalData.especie,
+                raza: animalData.raza,
+                sexo: animalData.sexo,
+                fechaNacimiento: animalData.fechaNacimiento,
+                peso: animalData.peso,
+                grupo: animalData.grupo || null,
+                foto: animalData.foto || getDefaultAnimalPhoto(animalData.especie),
+                companyId: companyId,
+                createdAt: new Date().toISOString(),
+                createdBy: user.email
+            };
+
+            livestock[companyId].push(newAnimal);
+            localStorage.setItem('livestock', JSON.stringify(livestock));
+
+            return { success: true, animal: newAnimal };
+        } catch (error) {
+            console.error('Error al agregar animal:', error);
+            return { success: false, error: 'Error al agregar el animal' };
+        }
+    };
+
+    // Obtener ganado de la empresa del usuario
+    const getCompanyLivestock = () => {
+        try {
+            if (!user) {
+                return [];
+            }
+
+            const userCompany = getUserCompany();
+            if (!userCompany) {
+                return [];
+            }
+
+            const livestock = JSON.parse(localStorage.getItem('livestock')) || {};
+            return livestock[userCompany.id] || [];
+        } catch (error) {
+            console.error('Error al obtener ganado de la empresa:', error);
+            return [];
+        }
+    };
+
+    // Obtener animal específico por ID
+    const getAnimalById = (animalId) => {
+        try {
+            const companyLivestock = getCompanyLivestock();
+            return companyLivestock.find(animal => animal.id === animalId) || null;
+        } catch (error) {
+            console.error('Error al obtener animal por ID:', error);
+            return null;
+        }
+    };
+
+    // Actualizar información de un animal
+    const updateAnimal = (animalId, updateData) => {
+        try {
+            if (!user) {
+                return { success: false, error: 'No tienes permisos para actualizar este animal' };
+            }
+
+            const userCompany = getUserCompany();
+            if (!userCompany) {
+                return { success: false, error: 'Debes pertenecer a una empresa para actualizar ganado' };
+            }
+
+            const livestock = JSON.parse(localStorage.getItem('livestock')) || {};
+            const companyId = userCompany.id;
+            
+            if (!livestock[companyId]) {
+                return { success: false, error: 'No se encontró ganado en esta empresa' };
+            }
+
+            const animalIndex = livestock[companyId].findIndex(animal => animal.id === animalId);
+            if (animalIndex === -1) {
+                return { success: false, error: 'Animal no encontrado' };
+            }
+
+            livestock[companyId][animalIndex] = {
+                ...livestock[companyId][animalIndex],
+                ...updateData,
+                updatedAt: new Date().toISOString(),
+                updatedBy: user.email
+            };
+
+            localStorage.setItem('livestock', JSON.stringify(livestock));
+            return { success: true, animal: livestock[companyId][animalIndex] };
+        } catch (error) {
+            console.error('Error al actualizar animal:', error);
+            return { success: false, error: 'Error al actualizar el animal' };
+        }
+    };
+
+    // Eliminar animal
+    const deleteAnimal = (animalId) => {
+        try {
+            if (!user) {
+                return { success: false, error: 'No tienes permisos para eliminar este animal' };
+            }
+
+            const userCompany = getUserCompany();
+            if (!userCompany) {
+                return { success: false, error: 'Debes pertenecer a una empresa para eliminar ganado' };
+            }
+
+            const livestock = JSON.parse(localStorage.getItem('livestock')) || {};
+            const companyId = userCompany.id;
+            
+            if (!livestock[companyId]) {
+                return { success: false, error: 'No se encontró ganado en esta empresa' };
+            }
+
+            livestock[companyId] = livestock[companyId].filter(animal => animal.id !== animalId);
+            localStorage.setItem('livestock', JSON.stringify(livestock));
+            
+            return { success: true };
+        } catch (error) {
+            console.error('Error al eliminar animal:', error);
+            return { success: false, error: 'Error al eliminar el animal' };
+        }
+    };
+
+    // Función auxiliar para obtener foto por defecto según especie
+    const getDefaultAnimalPhoto = (especie) => {
+        const defaultPhotos = {
+            'Bovino': '/images/Ganado_Bovino/vaca_1.png',
+            'Ovino': '/images/Ganado_Ovino/oveja_1.png',
+            'Caprino': '/images/Ganado_Caprino/cabra_1.png'
+        };
+        return defaultPhotos[especie] || '/images/Ganado_Relleno/animal_default.png';
     };
 
     const value = {
@@ -231,7 +417,14 @@ export const UserProvider = ({ children }) => {
         joinCompany,
         getUserCompany,
         isCompanyOwner,
-        leaveCompany
+        leaveCompany,
+        // Funciones de ganado
+        checkAreteExists,
+        addAnimal,
+        getCompanyLivestock,
+        getAnimalById,
+        updateAnimal,
+        deleteAnimal
     };
 
     return (

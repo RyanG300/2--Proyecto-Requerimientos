@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import { useNavigate } from 'react-router-dom';
 import { useUser } from './UserContext';
 //import './App.css'
 
-// Importar datos reales
+// Importar datos reales (ya no se usarán como primarios)
 import { GANADO } from './data'
 
 // Importar los iconos del menú
@@ -14,8 +14,20 @@ import { GANADO } from './data'
 
 function App() {
   const [count, setCount] = useState(0)
+  const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
-  const { user, logout } = useUser();
+  const { user, logout, getUserCompany, getCompanyLivestock } = useUser();
+
+  const [companyLivestock, setCompanyLivestock] = useState([]);
+  const [userCompany, setUserCompany] = useState(null);
+
+  // Cargar ganado de la empresa cuando el componente se monta o el usuario cambia
+  useEffect(() => {
+    const company = getUserCompany();
+    const livestock = getCompanyLivestock();
+    setUserCompany(company);
+    setCompanyLivestock(livestock);
+  }, [user, getUserCompany, getCompanyLivestock]);
 
   // Función para manejar logout
   const handleLogout = () => {
@@ -25,10 +37,41 @@ function App() {
     }
   };
 
-  // Aplana todas las especies en una sola lista, conservando el nombre de la especie
-  const listaGanado = Object.entries(GANADO).flatMap(([especie, arr]) =>
-    arr.map(item => ({ ...item, especie }))
+  const handleCompanyView = () => {
+    navigate('/company-view');
+  };
+
+  const handleGoToProfile = () => {
+    navigate('/perfil');
+  }
+
+  // Filtrar ganado basado en búsqueda
+  const filteredLivestock = companyLivestock.filter(animal =>
+    animal.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    animal.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    animal.especie.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    animal.raza.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Si no hay empresa, redirigir
+  if (!userCompany) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-lg p-8 border-2 border-red-400 max-w-md text-center">
+          <h2 className="text-2xl font-bold text-red-700 mb-4">Acceso Restringido</h2>
+          <p className="text-gray-700 mb-6">
+            Para acceder a esta aplicación, primero debes pertenecer a una empresa ganadera.
+          </p>
+          <button 
+            onClick={() => navigate('/company-view')}
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded-lg shadow transition"
+          >
+            Gestionar Empresa
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -46,10 +89,15 @@ function App() {
               </span>
             </div>
           </div>
+          {/* Botones perfil, volver y salir */}
           <div className="flex gap-4 items-center">
-            <button className="bg-white hover:bg-blue-200 rounded-xl flex flex-col items-center shadow px-2 py-1 transition">
+            <button onClick={handleGoToProfile} className="bg-white hover:bg-blue-200 rounded-xl flex flex-col items-center shadow px-2 py-1 transition">
               <img src="images/Menu_finqueros/icono_perfil.png" alt="Perfil" className="w-10 h-10" />
               <span className="font-bold text-green-700">Perfil</span>
+            </button>
+            <button onClick={handleCompanyView} className="bg-white hover:bg-blue-200 rounded-xl flex flex-col items-center shadow px-2 py-1 transition">
+              <img src="images/Menu_finqueros/icono_volver.png" alt="Volver" className="w-10 h-10" />
+              <span className="font-bold text-green-700">Volver</span>
             </button>
             <button 
               onClick={handleLogout}
@@ -63,10 +111,16 @@ function App() {
 
         {/* Rectángulo principal con logo, nombre y descripción */}
         <section className="mx-auto mt-6 mb-8 max-w-3xl w-full bg-white rounded-xl shadow-lg border-2 border-green-400 flex items-center gap-6 px-8 py-6">
-          <img src="images/Menu_finqueros/icono_FincaTec.png" alt="Logo FincaTec" className="w-24 h-24 rounded-2xl border border-green-300" />
+          <img src={userCompany?.photo || "images/Menu_finqueros/icono_FincaTec.png"} alt="Logo FincaTec" className="w-24 h-24 rounded-2xl border border-green-300" />
           <div>
-            <h2 className="text-2xl font-bold text-green-700">Finca Ganadera El Roble</h2>
-            <p className="text-gray-700 mt-2">Empresa dedicada a la producción y comercialización de ganado bovino de alta calidad, comprometida con la sostenibilidad y el bienestar animal.</p>
+            <h2 className="text-2xl font-bold text-green-700">{userCompany?.name || 'Empresa Ganadera'}</h2>
+            <p className="text-gray-700 mt-2">
+              {userCompany?.description || 'Empresa dedicada a la producción y comercialización de ganado de alta calidad.'}
+            </p>
+            <div className="text-sm text-gray-600 mt-2">
+              <span className="font-semibold">Ubicación:</span> {userCompany?.location || 'No especificada'} | 
+              <span className="font-semibold ml-2">Ganado registrado:</span> {companyLivestock.length} cabezas
+            </div>
           </div>
         </section>
 
@@ -82,36 +136,70 @@ function App() {
                 </button>
               </div>
               <div className="w-full flex items-center border-2 border-green-300 rounded-lg mb-4 px-2 py-1 bg-gray-50">
-                <input type="text" placeholder="Buscar..." className="flex-1 bg-transparent outline-none px-2" />
+                <input 
+                  type="text" 
+                  placeholder="Buscar por nombre, ID, especie o raza..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="flex-1 bg-transparent outline-none px-2" 
+                />
                 <button className="p-1">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" /></svg>
                 </button>
               </div>
 
-              {/* Lista de ganado registrado - AHORA DINÁMICO CON TU DATA */}
+              {/* Lista de ganado registrado - AHORA DINÁMICO CON GANADO DE LA EMPRESA */}
               <div className="w-full flex-1 overflow-y-auto">
-                {listaGanado.map((animal) => (
-                  <div key={animal.id} className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
-                    <img
-                      src={animal.foto}               // viene como /images/...
-                      alt={animal.nombre}
-                      className="w-20 h-20 object-cover rounded-lg border border-green-300"
-                    />
-                    <div className="flex-1">
-                      <div className="font-bold text-green-800">Nombre: {animal.nombre}</div>
-                      <div className="text-sm text-gray-700">ID: {animal.id}</div>
-                      <div className="text-sm text-gray-700">Especie: {animal.especie}</div>
-                      <div className="text-sm text-gray-700">Raza: {animal.raza}</div>
-                      <div className="text-sm text-gray-700">Sexo: {animal.sexo}</div>
+                {filteredLivestock.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="text-gray-500 mb-4">
+                      {/**/}
+                      <img src="images/Menu_finqueros/cruz.png" alt="No hay ganado" className="w-20 mx-auto mb-2" />
+                      {companyLivestock.length === 0 
+                        ? 'No hay ganado registrado en tu empresa' 
+                        : 'No se encontraron resultados para tu búsqueda'
+                      }
                     </div>
-                    <button
-                      onClick={() => navigate(`/visualizar-ganado/${animal.id}`)}
-                      className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition"
-                    >
-                      Visualizar
-                    </button>
+                    {companyLivestock.length === 0 && (
+                      <button
+                        onClick={() => navigate('/add-ganado')}
+                        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition"
+                      >
+                        Agregar primer animal
+                      </button>
+                    )}
                   </div>
-                ))}
+                ) : (
+                  filteredLivestock.map((animal) => (
+                    <div key={animal.id} className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
+                      <img
+                        src={animal.foto}
+                        alt={animal.nombre}
+                        className="w-20 h-20 object-cover rounded-lg border border-green-300"
+                        onError={(e) => {
+                          e.target.src = '/images/Ganado_Relleno/animal_default.png';
+                        }}
+                      />
+                      <div className="flex-1">
+                        <div className="font-bold text-green-800">Nombre: {animal.nombre}</div>
+                        <div className="text-sm text-gray-700">ID: {animal.id}</div>
+                        <div className="text-sm text-gray-700">Especie: {animal.especie}</div>
+                        <div className="text-sm text-gray-700">Raza: {animal.raza}</div>
+                        <div className="text-sm text-gray-700">Sexo: {animal.sexo}</div>
+                        <div className="text-sm text-gray-700">Peso: {animal.peso} kg</div>
+                        {animal.grupo && (
+                          <div className="text-sm text-blue-600">Grupo: {animal.grupo}</div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => navigate(`/visualizar-ganado/${animal.id}`)}
+                        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition"
+                      >
+                        Visualizar
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </section>
 
