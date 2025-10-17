@@ -16,7 +16,7 @@ import CompanyView from './CompanyView.jsx'
 import { UserProvider } from './UserContext.jsx'
 import ProtectedRoute from './ProtectedRoute.jsx'
 import Perfil from './Perfil.jsx'
-
+import AddGrupos from './AddGrupos.jsx';
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <UserProvider>
@@ -83,6 +83,12 @@ createRoot(document.getElementById('root')).render(
               <Perfil />
             </ProtectedRoute>
           } />
+      <Route path="/add-grupos" element={
+        <ProtectedRoute>
+          <AddGrupos />
+        </ProtectedRoute>
+      } />
+
 
         </Routes>
       </BrowserRouter>
