@@ -1,9 +1,7 @@
+// src/App.jsx
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useUser } from './UserContext';
-
-// Importar datos reales
-import { GANADO } from './data'
 
 function App() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -11,21 +9,21 @@ function App() {
   const { user, logout, getUserCompany, getCompanyLivestock, getCompanyGroups } = useUser();
 
   const [companyLivestock, setCompanyLivestock] = useState([]);
-  const [companyGroups, setCompanyGroups] = useState([]); // 👈 Nuevo estado dinámico
+  const [companyGroups, setCompanyGroups] = useState([]); // 👈 grupos dinámicos
   const [userCompany, setUserCompany] = useState(null);
 
-  // Cargar datos al montar
+  // Cargar datos al montar / cuando cambie el usuario
   useEffect(() => {
     const company = getUserCompany();
     const livestock = getCompanyLivestock();
-    const groups = getCompanyGroups ? getCompanyGroups() : []; // 👈 Verifica si existe el método
+    const groups = getCompanyGroups ? getCompanyGroups() : [];
 
     setUserCompany(company);
     setCompanyLivestock(livestock);
     setCompanyGroups(groups);
   }, [user, getUserCompany, getCompanyLivestock, getCompanyGroups]);
 
-  // Función para manejar logout
+  // Logout
   const handleLogout = () => {
     if (window.confirm('¿Estás seguro de que quieres cerrar sesión?')) {
       logout();
@@ -36,7 +34,7 @@ function App() {
   const handleCompanyView = () => navigate('/company-view');
   const handleGoToProfile = () => navigate('/perfil');
 
-  // Filtrar ganado basado en búsqueda
+  // Filtrar ganado por búsqueda
   const filteredLivestock = companyLivestock.filter(animal =>
     animal.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
     animal.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -198,16 +196,6 @@ function App() {
                 </button>
               </div>
 
-              {/* Buscador */}
-              <div className="w-full flex items-center border-2 border-green-300 rounded-lg mb-4 px-2 py-1 bg-gray-50">
-                <input type="text" placeholder="Buscar grupo..." className="flex-1 bg-transparent outline-none px-2" />
-                <button className="p-1">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
-                  </svg>
-                </button>
-              </div>
-
               {/* Lista dinámica de grupos */}
               <div className="w-full flex-1 overflow-y-auto">
                 {companyGroups.length === 0 ? (
@@ -222,7 +210,7 @@ function App() {
                         <div className="text-sm text-gray-700">Especie: {grupo.especie}</div>
                       </div>
                       <button
-                        onClick={() => navigate(`/visualizar-grupos-pastoreo/${grupo.especie}`)}
+                        onClick={() => navigate(`/visualizar-grupos-pastoreo/${grupo.id}`)} // 👈 usar el ID del grupo
                         className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition"
                       >
                         Visualizar

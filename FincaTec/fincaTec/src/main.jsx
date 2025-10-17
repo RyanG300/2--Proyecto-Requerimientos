@@ -66,8 +66,7 @@ createRoot(document.getElementById('root')).render(
             </ProtectedRoute>
           } />
 
-          {/* Ruta con parámetro :tipo para Bovino | Ovino | Caprino */}
-          <Route path="/visualizar-grupos-pastoreo/:tipo" element={
+          <Route path="/visualizar-grupos-pastoreo/:grupoId" element={
             <ProtectedRoute>
               <VisualizarGruposPastoreo />
             </ProtectedRoute>

@@ -5,433 +5,473 @@ const UserContext = createContext();
 
 // Hook personalizado para usar el contexto
 export const useUser = () => {
-    const context = useContext(UserContext);
-    if (!context) {
-        throw new Error('useUser debe ser usado dentro de un UserProvider');
-    }
-    return context;
+  const context = useContext(UserContext);
+  if (!context) {
+    throw new Error('useUser debe ser usado dentro de un UserProvider');
+  }
+  return context;
+};
+
+// Helpers internos
+const getDefaultAnimalPhoto = (especie) => {
+  const defaults = {
+    'Bovino': '/images/Ganado_Bovino/vaca_1.png',
+    'Ovino' : '/images/Ganado_Ovino/oveja_1.png',
+    'Caprino': '/images/Ganado_Caprino/cabra_1.png'
+  };
+  return defaults[especie] || '/images/Ganado_Relleno/animal_default.png';
+};
+
+const readLS = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeLS = (key, value) => {
+  localStorage.setItem(key, JSON.stringify(value));
 };
 
 // Proveedor del contexto
 export const UserProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-    // Verificar si hay un usuario logueado al cargar la aplicación
-    useEffect(() => {
-        const checkLoggedUser = () => {
-            try {
-                const loggedUser = localStorage.getItem('loggedUser');
-                if (loggedUser) {
-                    setUser(JSON.parse(loggedUser));
-                }
-            } catch (error) {
-                console.error('Error al cargar usuario desde localStorage:', error);
-                localStorage.removeItem('loggedUser');
-            } finally {
-                setIsLoading(false);
-            }
-        };
+  // Cargar usuario
+  useEffect(() => {
+    try {
+      const loggedUser = localStorage.getItem('loggedUser');
+      if (loggedUser) setUser(JSON.parse(loggedUser));
+    } catch (e) {
+      console.error('Error al cargar usuario desde localStorage:', e);
+      localStorage.removeItem('loggedUser');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-        checkLoggedUser();
-    }, []);
+  // ====== AUTENTICACIÓN ======
+  const login = (userData) => {
+    try {
+      setUser(userData);
+      localStorage.setItem('loggedUser', JSON.stringify(userData));
+      return true;
+    } catch (error) {
+      console.error('Error al hacer login:', error);
+      return false;
+    }
+  };
 
-    // Función para hacer login
-    const login = (userData) => {
-        try {
-            // Guardar usuario en el estado
-            setUser(userData);
-            // Persistir en localStorage
-            localStorage.setItem('loggedUser', JSON.stringify(userData));
-            return true;
-        } catch (error) {
-            console.error('Error al hacer login:', error);
-            return false;
+  const logout = () => {
+    try {
+      setUser(null);
+      localStorage.removeItem('loggedUser');
+      return true;
+    } catch (error) {
+      console.error('Error al hacer logout:', error);
+      return false;
+    }
+  };
+
+  const updateUser = (newUserData) => {
+    try {
+      const updatedUser = { ...user, ...newUserData };
+      setUser(updatedUser);
+      localStorage.setItem('loggedUser', JSON.stringify(updatedUser));
+      return true;
+    } catch (error) {
+      console.error('Error al actualizar usuario:', error);
+      return false;
+    }
+  };
+
+  const isAuthenticated = () => user !== null;
+  const getUserInfo = (field) => (user ? user[field] : null);
+
+  // ====== EMPRESAS ======
+  const generateCompanyId = () => `EMP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+  const createCompany = (companyData) => {
+    try {
+      const companies = readLS('companies', []);
+      const newCompany = {
+        id: generateCompanyId(),
+        name: companyData.name,
+        description: companyData.description,
+        photo: companyData.photo || null,
+        location: companyData.location,
+        owner: user.email,
+        members: [user.email],
+        createdAt: new Date().toISOString()
+      };
+
+      companies.push(newCompany);
+      writeLS('companies', companies);
+
+      const updatedUser = { ...user, companyId: newCompany.id };
+      setUser(updatedUser);
+      localStorage.setItem('loggedUser', JSON.stringify(updatedUser));
+
+      return { success: true, company: newCompany };
+    } catch (error) {
+      console.error('Error al crear empresa:', error);
+      return { success: false, error: 'Error al crear la empresa' };
+    }
+  };
+
+  const joinCompany = (companyId) => {
+    try {
+      const companies = readLS('companies', []);
+      const idx = companies.findIndex(c => c.id === companyId);
+      if (idx === -1) return { success: false, error: 'Empresa no encontrada' };
+
+      const company = companies[idx];
+      if (company.members.includes(user.email)) {
+        return { success: false, error: 'Ya eres miembro de esta empresa' };
+      }
+
+      company.members.push(user.email);
+      companies[idx] = company;
+      writeLS('companies', companies);
+
+      const updatedUser = { ...user, companyId };
+      setUser(updatedUser);
+      localStorage.setItem('loggedUser', JSON.stringify(updatedUser));
+
+      return { success: true, company };
+    } catch (error) {
+      console.error('Error al unirse a empresa:', error);
+      return { success: false, error: 'Error al unirse a la empresa' };
+    }
+  };
+
+  const getUserCompany = () => {
+    try {
+      if (!user) return null;
+      const companies = readLS('companies', []);
+      return companies.find(comp => comp.members.includes(user.email)) || null;
+    } catch (error) {
+      console.error('Error al obtener empresa del usuario:', error);
+      return null;
+    }
+  };
+
+  const isCompanyOwner = () => {
+    const c = getUserCompany();
+    return c && c.owner === user?.email;
+  };
+
+  const leaveCompany = () => {
+    try {
+      if (!user) return { success: false, error: 'Debes estar logueado' };
+      const userCompany = getUserCompany();
+      if (!userCompany) return { success: false, error: 'No perteneces a ninguna empresa' };
+
+      const companies = readLS('companies', []);
+      const idx = companies.findIndex(c => c.id === userCompany.id);
+      if (idx !== -1) {
+        const company = companies[idx];
+        if (company.owner === user.email) {
+          return { success: false, error: 'Como propietario, no puedes salir de la empresa' };
         }
-    };
+        company.members = company.members.filter(m => m !== user.email);
+        companies[idx] = company;
+        writeLS('companies', companies);
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Error al salir de empresa:', error);
+      return { success: false, error: 'Error al salir de la empresa' };
+    }
+  };
 
-    // Función para hacer logout
-    const logout = () => {
-        try {
-            setUser(null);
-            localStorage.removeItem('loggedUser');
-            return true;
-        } catch (error) {
-            console.error('Error al hacer logout:', error);
-            return false;
-        }
-    };
+  // ====== UTILIDADES VINCULADAS A EMPRESA ======
+  const getCompanyId = () => {
+    const c = getUserCompany();
+    return c?.id || null;
+  };
 
-    // Función para actualizar información del usuario
-    const updateUser = (newUserData) => {
-        try {
-            const updatedUser = { ...user, ...newUserData };
-            setUser(updatedUser);
-            localStorage.setItem('loggedUser', JSON.stringify(updatedUser));
-            return true;
-        } catch (error) {
-            console.error('Error al actualizar usuario:', error);
-            return false;
-        }
-    };
+  // ====== GANADO ======
+  const checkAreteExists = (arete) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return false;
+      const livestock = readLS('livestock', {});
+      const arr = livestock[cid] || [];
+      return arr.some(a => a.id === arete);
+    } catch (error) {
+      console.error('Error al verificar arete:', error);
+      return false;
+    }
+  };
 
-    // Verificar si el usuario está autenticado
-    const isAuthenticated = () => {
-        return user !== null;
-    };
+  const addAnimal = (animalData) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return { success: false, error: 'Debes pertenecer a una empresa para agregar ganado' };
+      if (checkAreteExists(animalData.identificacion)) {
+        return { success: false, error: `El arete "${animalData.identificacion}" ya está registrado en tu empresa` };
+      }
 
-    // Obtener información específica del usuario
-    const getUserInfo = (field) => {
-        return user ? user[field] : null;
-    };
+      const livestock = readLS('livestock', {});
+      if (!livestock[cid]) livestock[cid] = [];
 
-    // === FUNCIONES PARA EMPRESAS ===
+      const newAnimal = {
+        id: animalData.identificacion,
+        identificacion: animalData.identificacion,
+        nombre: animalData.nombre || `Animal ${animalData.identificacion}`,
+        especie: animalData.especie,
+        raza: animalData.raza,
+        sexo: animalData.sexo,
+        fechaNacimiento: animalData.fechaNacimiento,
+        peso: animalData.peso,
+        grupo: animalData.grupo || null,
+        foto: animalData.foto || getDefaultAnimalPhoto(animalData.especie),
+        companyId: cid,
+        createdAt: new Date().toISOString(),
+        createdBy: user.email
+      };
 
-    // Generar ID único para empresa
-    const generateCompanyId = () => {
-        const timestamp = Date.now();
-        const randomNum = Math.floor(Math.random() * 1000);
-        return `EMP-${timestamp}-${randomNum}`;
-    };
+      livestock[cid].push(newAnimal);
+      writeLS('livestock', livestock);
 
-    // Crear nueva empresa
-    const createCompany = (companyData) => {
-        try {
-            const companies = JSON.parse(localStorage.getItem('companies')) || [];
-            const newCompany = {
-                id: generateCompanyId(),
-                name: companyData.name,
-                description: companyData.description,
-                photo: companyData.photo || null,
-                location: companyData.location,
-                owner: user.email,
-                members: [user.email],
-                createdAt: new Date().toISOString()
-            };
+      return { success: true, animal: newAnimal };
+    } catch (error) {
+      console.error('Error al agregar animal:', error);
+      return { success: false, error: 'Error al agregar el animal' };
+    }
+  };
 
-            companies.push(newCompany);
-            localStorage.setItem('companies', JSON.stringify(companies));
+  const getCompanyLivestock = () => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return [];
+      const livestock = readLS('livestock', {});
+      return livestock[cid] || [];
+    } catch (error) {
+      console.error('Error al obtener ganado de la empresa:', error);
+      return [];
+    }
+  };
 
-            // Actualizar usuario con la empresa
-            const updatedUser = { ...user, companyId: newCompany.id };
-            setUser(updatedUser);
-            localStorage.setItem('loggedUser', JSON.stringify(updatedUser));
+  const getAnimalById = (animalId) => {
+    try {
+      const arr = getCompanyLivestock();
+      return arr.find(a => a.id === animalId) || null;
+    } catch (error) {
+      console.error('Error al obtener animal por ID:', error);
+      return null;
+    }
+  };
 
-            return { success: true, company: newCompany };
-        } catch (error) {
-            console.error('Error al crear empresa:', error);
-            return { success: false, error: 'Error al crear la empresa' };
-        }
-    };
+  const updateAnimal = (animalId, updateData) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return { success: false, error: 'Debes pertenecer a una empresa para actualizar ganado' };
 
-    // Unirse a una empresa
-    const joinCompany = (companyId) => {
-        try {
-            const companies = JSON.parse(localStorage.getItem('companies')) || [];
-            const companyIndex = companies.findIndex(comp => comp.id === companyId);
+      const livestock = readLS('livestock', {});
+      if (!livestock[cid]) return { success: false, error: 'No se encontró ganado en esta empresa' };
 
-            if (companyIndex === -1) {
-                return { success: false, error: 'Empresa no encontrada' };
-            }
+      const idx = livestock[cid].findIndex(a => a.id === animalId);
+      if (idx === -1) return { success: false, error: 'Animal no encontrado' };
 
-            const company = companies[companyIndex];
-            
-            // Verificar si el usuario ya es miembro
-            if (company.members.includes(user.email)) {
-                return { success: false, error: 'Ya eres miembro de esta empresa' };
-            }
+      livestock[cid][idx] = {
+        ...livestock[cid][idx],
+        ...updateData,
+        updatedAt: new Date().toISOString(),
+        updatedBy: user.email
+      };
+      writeLS('livestock', livestock);
 
-            // Agregar usuario a la empresa
-            company.members.push(user.email);
-            companies[companyIndex] = company;
-            localStorage.setItem('companies', JSON.stringify(companies));
+      return { success: true, animal: livestock[cid][idx] };
+    } catch (error) {
+      console.error('Error al actualizar animal:', error);
+      return { success: false, error: 'Error al actualizar el animal' };
+    }
+  };
 
-            // Actualizar usuario con la empresa
-            const updatedUser = { ...user, companyId: companyId };
-            setUser(updatedUser);
-            localStorage.setItem('loggedUser', JSON.stringify(updatedUser));
+  const deleteAnimal = (animalId) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return { success: false, error: 'Debes pertenecer a una empresa para eliminar ganado' };
 
-            return { success: true, company };
-        } catch (error) {
-            console.error('Error al unirse a empresa:', error);
-            return { success: false, error: 'Error al unirse a la empresa' };
-        }
-    };
+      const livestock = readLS('livestock', {});
+      if (!livestock[cid]) return { success: false, error: 'No se encontró ganado en esta empresa' };
 
-    // Obtener información de la empresa del usuario
-    const getUserCompany = () => {
-        try {
-            if (!user) {
-                return null;
-            }
+      livestock[cid] = livestock[cid].filter(a => a.id !== animalId);
+      writeLS('livestock', livestock);
+      return { success: true };
+    } catch (error) {
+      console.error('Error al eliminar animal:', error);
+      return { success: false, error: 'Error al eliminar el animal' };
+    }
+  };
 
-            const companies = JSON.parse(localStorage.getItem('companies')) || [];
-            
-            // Buscar empresa donde el usuario es miembro
-            const foundCompany = companies.find(comp => comp.members.includes(user.email));
-            
-            return foundCompany || null;
-        } catch (error) {
-            console.error('Error al obtener empresa del usuario:', error);
-            return null;
-        }
-    };
+  // ====== GRUPOS (NUEVO) ======
+  const getCompanyGroups = () => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return [];
+      const groups = readLS('groups', {});
+      return groups[cid] || [];
+    } catch (e) {
+      console.error('Error al obtener grupos:', e);
+      return [];
+    }
+  };
 
-    // Verificar si el usuario es propietario de su empresa
-    const isCompanyOwner = () => {
-        const company = getUserCompany();
-        return company && company.owner === user?.email;
-    };
+  const checkGroupExists = (codigo) => {
+    const id = (codigo || '').trim();
+    if (!id) return false;
+    const arr = getCompanyGroups();
+    return arr.some(g => (g.id || g.codigo) === id);
+  };
 
-    // Salir de una empresa
-    const leaveCompany = () => {
-        try {
-            if (!user) {
-                return { success: false, error: 'Debes estar logueado' };
-            }
+  // Para AddGrupos: listar animales por especie y opcionalmente solo los sin grupo
+  const listAnimals = ({ especie, onlyUngrouped } = {}) => {
+    let arr = getCompanyLivestock();
+    if (especie) arr = arr.filter(a => a.especie === especie);
+    if (onlyUngrouped) arr = arr.filter(a => !a.grupo);
+    return Promise.resolve(arr);
+  };
 
-            const userCompany = getUserCompany();
-            if (!userCompany) {
-                return { success: false, error: 'No perteneces a ninguna empresa' };
-            }
+  const addGroup = (grupoData) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return { success: false, error: 'Debes pertenecer a una empresa para crear grupos' };
 
-            const companies = JSON.parse(localStorage.getItem('companies')) || [];
-            const companyIndex = companies.findIndex(comp => comp.id === userCompany.id);
+      const id = (grupoData?.id || grupoData?.codigo || '').trim();
+      if (!id) return { success: false, error: 'Código/ID de grupo requerido' };
+      if (checkGroupExists(id)) return { success: false, error: 'El código de grupo ya existe' };
 
-            if (companyIndex !== -1) {
-                const company = companies[companyIndex];
-                
-                // Si es el propietario, no puede salir (debe transferir o eliminar)
-                if (company.owner === user.email) {
-                    return { success: false, error: 'Como propietario, no puedes salir de la empresa' };
-                }
+      const groups = readLS('groups', {});
+      if (!groups[cid]) groups[cid] = [];
 
-                // Remover usuario de la empresa
-                company.members = company.members.filter(member => member !== user.email);
-                companies[companyIndex] = company;
-                localStorage.setItem('companies', JSON.stringify(companies));
-            }
+      const newGroup = {
+        id,
+        codigo: id,
+        nombre: grupoData.nombre || id,
+        especie: grupoData.especie,
+        objetivo: grupoData.objetivo || '',
+        potrero: grupoData.potrero || null,
+        foto: grupoData.foto || null,
+        alimentacion: grupoData.alimentacion || {},
+        miembros: Array.isArray(grupoData.miembros) ? [...grupoData.miembros] : [],
+        createdAt: grupoData.createdAt || new Date().toISOString(),
+        createdBy: user?.email || 'sistema'
+      };
 
-            // No necesitamos actualizar el usuario ya que no guardamos companyId
-            return { success: true };
-        } catch (error) {
-            console.error('Error al salir de empresa:', error);
-            return { success: false, error: 'Error al salir de la empresa' };
-        }
-    };
+      groups[cid] = [newGroup, ...(groups[cid] || [])];
+      writeLS('groups', groups);
 
-    // === FUNCIONES PARA GANADO ===
+      // Si hay miembros, asignarlos al grupo en el ganado
+      if (newGroup.miembros.length) {
+        const setIds = new Set(newGroup.miembros);
+        const livestock = readLS('livestock', {});
+        const companyLivestock = livestock[cid] || [];
+        const updated = companyLivestock.map(a => {
+          const key = a.identificacion || a.id;
+          return setIds.has(key) ? { ...a, grupo: id } : a;
+        });
+        livestock[cid] = updated;
+        writeLS('livestock', livestock);
+      }
 
-    // Verificar si un arete ya existe en la empresa
-    const checkAreteExists = (arete) => {
-        try {
-            if (!user) {
-                return false;
-            }
+      return { success: true, group: newGroup };
+    } catch (error) {
+      console.error('Error al crear grupo:', error);
+      return { success: false, error: 'Error interno al crear grupo' };
+    }
+  };
 
-            const userCompany = getUserCompany();
-            if (!userCompany) {
-                return false;
-            }
+  // (Opcional) editar/eliminar grupo — por si luego quieres botones de acción
+  const updateGroup = (groupId, updateData) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return { success: false, error: 'Sin empresa' };
+      const groups = readLS('groups', {});
+      if (!groups[cid]) return { success: false, error: 'No hay grupos' };
 
-            const livestock = JSON.parse(localStorage.getItem('livestock')) || {};
-            const companyLivestock = livestock[userCompany.id] || [];
-            
-            return companyLivestock.some(animal => animal.id === arete);
-        } catch (error) {
-            console.error('Error al verificar arete:', error);
-            return false;
-        }
-    };
+      const idx = groups[cid].findIndex(g => g.id === groupId);
+      if (idx === -1) return { success: false, error: 'Grupo no encontrado' };
 
-    // Agregar nuevo animal a la empresa
-    const addAnimal = (animalData) => {
-        try {
-            if (!user) {
-                return { success: false, error: 'Debes estar logueado para agregar ganado' };
-            }
+      groups[cid][idx] = {
+        ...groups[cid][idx],
+        ...updateData,
+        updatedAt: new Date().toISOString(),
+        updatedBy: user?.email || 'sistema'
+      };
+      writeLS('groups', groups);
+      return { success: true, group: groups[cid][idx] };
+    } catch (e) {
+      return { success: false, error: 'Error al actualizar grupo' };
+    }
+  };
 
-            const userCompany = getUserCompany();
-            if (!userCompany) {
-                return { success: false, error: 'Debes pertenecer a una empresa para agregar ganado' };
-            }
+  const deleteGroup = (groupId) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return { success: false, error: 'Sin empresa' };
+      const groups = readLS('groups', {});
+      if (!groups[cid]) return { success: false, error: 'No hay grupos' };
 
-            // Verificar que el arete no esté repetido
-            if (checkAreteExists(animalData.identificacion)) {
-                return { success: false, error: `El arete "${animalData.identificacion}" ya está registrado en tu empresa` };
-            }
+      // Quitar grupo de los animales que lo tenían
+      const livestock = readLS('livestock', {});
+      if (livestock[cid]) {
+        livestock[cid] = livestock[cid].map(a => (a.grupo === groupId ? { ...a, grupo: null } : a));
+        writeLS('livestock', livestock);
+      }
 
-            const livestock = JSON.parse(localStorage.getItem('livestock')) || {};
-            const companyId = userCompany.id;
-            
-            // Inicializar array de la empresa si no existe
-            if (!livestock[companyId]) {
-                livestock[companyId] = [];
-            }
+      groups[cid] = groups[cid].filter(g => g.id !== groupId);
+      writeLS('groups', groups);
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: 'Error al eliminar grupo' };
+    }
+  };
 
-            const newAnimal = {
-                id: animalData.identificacion, // Usar el arete como ID
-                identificacion: animalData.identificacion, // Mantener también este campo para compatibilidad
-                nombre: animalData.nombre || `Animal ${animalData.identificacion}`,
-                especie: animalData.especie,
-                raza: animalData.raza,
-                sexo: animalData.sexo,
-                fechaNacimiento: animalData.fechaNacimiento,
-                peso: animalData.peso,
-                grupo: animalData.grupo || null,
-                foto: animalData.foto || getDefaultAnimalPhoto(animalData.especie),
-                companyId: companyId,
-                createdAt: new Date().toISOString(),
-                createdBy: user.email
-            };
+  const value = {
+    // Auth
+    user,
+    isLoading,
+    login,
+    logout,
+    updateUser,
+    isAuthenticated,
+    getUserInfo,
 
-            livestock[companyId].push(newAnimal);
-            localStorage.setItem('livestock', JSON.stringify(livestock));
+    // Empresa
+    createCompany,
+    joinCompany,
+    getUserCompany,
+    isCompanyOwner,
+    leaveCompany,
 
-            return { success: true, animal: newAnimal };
-        } catch (error) {
-            console.error('Error al agregar animal:', error);
-            return { success: false, error: 'Error al agregar el animal' };
-        }
-    };
+    // Ganado
+    checkAreteExists,
+    addAnimal,
+    getCompanyLivestock,
+    getAnimalById,
+    updateAnimal,
+    deleteAnimal,
 
-    // Obtener ganado de la empresa del usuario
-    const getCompanyLivestock = () => {
-        try {
-            if (!user) {
-                return [];
-            }
+    // Grupos (nuevo)
+    getCompanyGroups,
+    addGroup,
+    checkGroupExists,
+    listAnimals,
+    updateGroup,  // opcional
+    deleteGroup,  // opcional
+  };
 
-            const userCompany = getUserCompany();
-            if (!userCompany) {
-                return [];
-            }
-
-            const livestock = JSON.parse(localStorage.getItem('livestock')) || {};
-            return livestock[userCompany.id] || [];
-        } catch (error) {
-            console.error('Error al obtener ganado de la empresa:', error);
-            return [];
-        }
-    };
-
-    // Obtener animal específico por ID
-    const getAnimalById = (animalId) => {
-        try {
-            const companyLivestock = getCompanyLivestock();
-            return companyLivestock.find(animal => animal.id === animalId) || null;
-        } catch (error) {
-            console.error('Error al obtener animal por ID:', error);
-            return null;
-        }
-    };
-
-    // Actualizar información de un animal
-    const updateAnimal = (animalId, updateData) => {
-        try {
-            if (!user) {
-                return { success: false, error: 'No tienes permisos para actualizar este animal' };
-            }
-
-            const userCompany = getUserCompany();
-            if (!userCompany) {
-                return { success: false, error: 'Debes pertenecer a una empresa para actualizar ganado' };
-            }
-
-            const livestock = JSON.parse(localStorage.getItem('livestock')) || {};
-            const companyId = userCompany.id;
-            
-            if (!livestock[companyId]) {
-                return { success: false, error: 'No se encontró ganado en esta empresa' };
-            }
-
-            const animalIndex = livestock[companyId].findIndex(animal => animal.id === animalId);
-            if (animalIndex === -1) {
-                return { success: false, error: 'Animal no encontrado' };
-            }
-
-            livestock[companyId][animalIndex] = {
-                ...livestock[companyId][animalIndex],
-                ...updateData,
-                updatedAt: new Date().toISOString(),
-                updatedBy: user.email
-            };
-
-            localStorage.setItem('livestock', JSON.stringify(livestock));
-            return { success: true, animal: livestock[companyId][animalIndex] };
-        } catch (error) {
-            console.error('Error al actualizar animal:', error);
-            return { success: false, error: 'Error al actualizar el animal' };
-        }
-    };
-
-    // Eliminar animal
-    const deleteAnimal = (animalId) => {
-        try {
-            if (!user) {
-                return { success: false, error: 'No tienes permisos para eliminar este animal' };
-            }
-
-            const userCompany = getUserCompany();
-            if (!userCompany) {
-                return { success: false, error: 'Debes pertenecer a una empresa para eliminar ganado' };
-            }
-
-            const livestock = JSON.parse(localStorage.getItem('livestock')) || {};
-            const companyId = userCompany.id;
-            
-            if (!livestock[companyId]) {
-                return { success: false, error: 'No se encontró ganado en esta empresa' };
-            }
-
-            livestock[companyId] = livestock[companyId].filter(animal => animal.id !== animalId);
-            localStorage.setItem('livestock', JSON.stringify(livestock));
-            
-            return { success: true };
-        } catch (error) {
-            console.error('Error al eliminar animal:', error);
-            return { success: false, error: 'Error al eliminar el animal' };
-        }
-    };
-
-    // Función auxiliar para obtener foto por defecto según especie
-    const getDefaultAnimalPhoto = (especie) => {
-        const defaultPhotos = {
-            'Bovino': '/images/Ganado_Bovino/vaca_1.png',
-            'Ovino': '/images/Ganado_Ovino/oveja_1.png',
-            'Caprino': '/images/Ganado_Caprino/cabra_1.png'
-        };
-        return defaultPhotos[especie] || '/images/Ganado_Relleno/animal_default.png';
-    };
-
-    const value = {
-        user,
-        isLoading,
-        login,
-        logout,
-        updateUser,
-        isAuthenticated,
-        getUserInfo,
-        // Funciones de empresa
-        createCompany,
-        joinCompany,
-        getUserCompany,
-        isCompanyOwner,
-        leaveCompany,
-        // Funciones de ganado
-        checkAreteExists,
-        addAnimal,
-        getCompanyLivestock,
-        getAnimalById,
-        updateAnimal,
-        deleteAnimal
-    };
-
-    return (
-        <UserContext.Provider value={value}>
-            {children}
-        </UserContext.Provider>
-    );
+  return (
+    <UserContext.Provider value={value}>
+      {children}
+    </UserContext.Provider>
+  );
 };
 
 export default UserContext;

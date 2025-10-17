@@ -1,44 +1,46 @@
 // src/pages/VisualizarGruposPastoreo.jsx
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
-import { GANADO, ALIMENTACION_POR_TIPO } from "./data.jsx";
+import { ALIMENTACION_POR_TIPO } from "./data.jsx";
+import { useUser } from "./UserContext.jsx";
 
 export default function VisualizarGruposPastoreo() {
-  const { tipo } = useParams(); // "Bovino" | "Ovino" | "Caprino"
+  const { grupoId } = useParams(); // 👈 ahora recibimos el ID del grupo
   const navigate = useNavigate();
+  const { getCompanyGroups, getCompanyLivestock, updateGroup, getUserCompany } = useUser();
 
-  // Normaliza el tipo (por si llega en minúsculas)
-  const tipoKey =
-    (tipo ?? "").charAt(0).toUpperCase() + (tipo ?? "").slice(1).toLowerCase();
+  const [grupo, setGrupo] = useState(null);
+  const [animales, setAnimales] = useState([]);
+  const [cargando, setCargando] = useState(true);
 
-  const lista = GANADO[tipoKey] ?? [];
+  // Cargar grupo y animales del grupo
+  useEffect(() => {
+    const company = getUserCompany();
+    if (!company) {
+      setCargando(false);
+      return;
+    }
 
-  // Claves para localStorage por grupo
+    const grupos = getCompanyGroups() || [];
+    const g = grupos.find((x) => x.id === grupoId) || null;
+    setGrupo(g);
+
+    const all = getCompanyLivestock() || [];
+    const delGrupo = all.filter((a) => a.grupo === grupoId);
+    setAnimales(delGrupo);
+
+    setCargando(false);
+  }, [grupoId, getCompanyGroups, getCompanyLivestock, getUserCompany]);
+
+  const tipoKey = (grupo?.especie ?? "").charAt(0).toUpperCase() + (grupo?.especie ?? "").slice(1).toLowerCase();
+
+  // Claves para historial por grupo (localStorage solo para histórico)
   const LS_KEYS = useMemo(
     () => ({
-      actual: `alimentacion:${tipoKey}`,
-      historial: `historial:${tipoKey}`,
+      historial: `historial:grupo:${grupoId}`,
     }),
-    [tipoKey]
+    [grupoId]
   );
-
-  // Estado: alimentación actual del grupo + historial
-  const [alimentacionActual, setAlimentacionActual] = useState(() => {
-    // intenta cargar de localStorage; sino usa default de data.jsx
-    try {
-      const raw = localStorage.getItem(LS_KEYS.actual);
-      if (raw) return JSON.parse(raw);
-    } catch {}
-    return (
-      ALIMENTACION_POR_TIPO[tipoKey] ?? {
-        tipo: "No definido",
-        cantidad: "-",
-        horario: "-",
-        suplemento: "-",
-        observaciones: "-",
-      }
-    );
-  });
 
   const [historial, setHistorial] = useState(() => {
     try {
@@ -48,13 +50,25 @@ export default function VisualizarGruposPastoreo() {
     return [];
   });
 
-  // Persistencia
-  useEffect(() => {
-    try {
-      localStorage.setItem(LS_KEYS.actual, JSON.stringify(alimentacionActual));
-    } catch {}
-  }, [alimentacionActual, LS_KEYS]);
+  // Alimentación actual viene del propio grupo; si no hay, usamos defaults por especie
+  const baseAlim =
+    grupo?.alimentacion ??
+    (ALIMENTACION_POR_TIPO[tipoKey] ?? {
+      tipo: "No definido",
+      cantidad: "-",
+      horario: "-",
+      suplemento: "-",
+      observaciones: "-",
+    });
 
+  const [alimentacionActual, setAlimentacionActual] = useState(baseAlim);
+
+  // Si cambia el grupo, rehacer estado de alimentación
+  useEffect(() => {
+    setAlimentacionActual(baseAlim);
+  }, [grupoId, grupo]); // eslint-disable-line
+
+  // Persistir historial
   useEffect(() => {
     try {
       localStorage.setItem(LS_KEYS.historial, JSON.stringify(historial));
@@ -99,8 +113,26 @@ export default function VisualizarGruposPastoreo() {
     if (!f.cantidad.trim()) e.cantidad = "Requerido";
     if (!f.horario.trim()) e.horario = "Requerido";
     if (!f.suplemento.trim()) e.suplemento = "Requerido";
-    // observaciones puede ir vacío
     return e;
+  };
+
+  const guardarAlimentacion = async (nueva) => {
+    // Guardar estado anterior en historial
+    setHistorial((h) => [
+      { fecha: new Date().toISOString(), data: alimentacionActual },
+      ...h,
+    ]);
+
+    setAlimentacionActual({ ...nueva });
+
+    // Persistir en el grupo (para que quede guardado realmente)
+    if (grupo) {
+      updateGroup?.(grupo.id, { alimentacion: { ...nueva } });
+      // refrescar grupo en memoria
+      const grupos = getCompanyGroups() || [];
+      const g = grupos.find((x) => x.id === grupoId) || null;
+      setGrupo(g);
+    }
   };
 
   const submitForm = (ev) => {
@@ -108,42 +140,64 @@ export default function VisualizarGruposPastoreo() {
     const e = validate(form);
     setErrors(e);
     if (Object.keys(e).length) return;
-
-    // Guardar estado anterior en historial
-    setHistorial((h) => [
-      { fecha: new Date().toISOString(), data: alimentacionActual },
-      ...h,
-    ]);
-
-    // Establecer nuevo actual
-    setAlimentacionActual({ ...form });
+    guardarAlimentacion(form);
     closeModal();
   };
 
   const handleDelete = () => {
     if (!confirm("¿Eliminar la alimentación actual del grupo?")) return;
-    // Mover actual al historial
-    setHistorial((h) => [
-      { fecha: new Date().toISOString(), data: alimentacionActual },
-      ...h,
-    ]);
-    // Vaciar actual
-    setAlimentacionActual({
+    const reset = {
       tipo: "No definido",
       cantidad: "-",
       horario: "-",
       suplemento: "-",
       observaciones: "-",
-    });
+    };
+    guardarAlimentacion(reset);
   };
+
+  if (cargando) {
+    return (
+      <main className="min-h-screen bg-green-50 py-10">
+        <div className="max-w-6xl mx-auto px-4 text-gray-600">Cargando…</div>
+      </main>
+    );
+  }
+
+  if (!grupo) {
+    return (
+      <main className="min-h-screen bg-green-50 py-10">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="mb-6 flex items-center justify-between">
+            <h1 className="text-3xl font-extrabold text-green-700">
+              Grupo no encontrado
+            </h1>
+            <button
+              onClick={() => navigate(-1)}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow"
+            >
+              Volver
+            </button>
+          </div>
+          <p className="text-gray-700">Verifica el identificador del grupo.</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-green-50 py-10">
       <div className="max-w-6xl mx-auto px-4">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-3xl font-extrabold text-green-700">
-            {tipoKey ? `Ganado ${tipoKey}` : "Ganado"}
-          </h1>
+          <div>
+            <h1 className="text-3xl font-extrabold text-green-700">
+              {grupo.nombre || `Grupo ${grupo.id}`}
+            </h1>
+            <p className="text-sm text-gray-500">
+              ID: <span className="font-semibold">{grupo.id}</span> · Especie:{" "}
+              <span className="font-semibold">{tipoKey || "-"}</span>
+            </p>
+          </div>
           <button
             onClick={() => navigate(-1)}
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow"
@@ -160,7 +214,7 @@ export default function VisualizarGruposPastoreo() {
               Alimentación actual
             </h2>
             <p className="text-sm text-gray-500 mb-4">
-              Grupo: <span className="font-semibold">{tipoKey}</span>
+              Grupo: <span className="font-semibold">{grupo.nombre || grupo.id}</span>
             </p>
 
             <div className="space-y-2 text-gray-800">
@@ -241,61 +295,69 @@ export default function VisualizarGruposPastoreo() {
 
           {/* 🐄 Tarjetas derecha */}
           <section className="lg:col-span-3">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {lista.map((animal) => (
-                <article
-                  key={animal.id}
-                  className="bg-white rounded-2xl border-2 border-green-300 shadow-lg p-6"
-                >
-                  <div className="flex flex-col items-center text-center">
-                    <img
-                      src={animal.foto}
-                      alt={animal.nombre}
-                      className="w-28 h-28 object-cover rounded-xl border-4 border-green-200 shadow mb-4"
-                    />
-                    <h2 className="text-2xl font-extrabold text-green-700 mb-2">
-                      {animal.nombre}
-                    </h2>
-                  </div>
+            {animales.length === 0 ? (
+              <div className="mt-10 text-center text-gray-600">
+                No hay animales asignados a este grupo.
+              </div>
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {animales.map((animal) => (
+                  <article
+                    key={animal.id}
+                    className="bg-white rounded-2xl border-2 border-green-300 shadow-lg p-6"
+                  >
+                    <div className="flex flex-col items-center text-center">
+                      <img
+                        src={animal.foto}
+                        alt={animal.nombre}
+                        className="w-28 h-28 object-cover rounded-xl border-4 border-green-200 shadow mb-4"
+                        onError={(e) => {
+                          e.currentTarget.src = '/images/Ganado_Relleno/animal_default.png';
+                        }}
+                      />
+                      <h2 className="text-2xl font-extrabold text-green-700 mb-2">
+                        {animal.nombre}
+                      </h2>
+                    </div>
 
-                  <ul className="space-y-1 text-gray-700">
-                    <li>
-                      <span className="font-semibold">Identificación:</span>{" "}
-                      {animal.id}
-                    </li>
-                    <li>
-                      <span className="font-semibold">Especie:</span> {tipoKey}
-                    </li>
-                    <li>
-                      <span className="font-semibold">Raza:</span>{" "}
-                      {animal.raza}
-                    </li>
-                    <li>
-                      <span className="font-semibold">Sexo:</span>{" "}
-                      {animal.sexo}
-                    </li>
-                    <li>
-                      <span className="font-semibold">
-                        Fecha de nacimiento:
-                      </span>{" "}
-                      {animal.fechaNacimiento}
-                    </li>
-                    <li>
-                      <span className="font-semibold">Potrero actual:</span>{" "}
-                      {animal.potreroActual}
-                    </li>
-                    <li>
-                      <span className="font-semibold">Peso:</span>{" "}
-                      {animal.pesoKg} kg
-                    </li>
-                  </ul>
-                </article>
-              ))}
-            </div>
-
-            {lista.length === 0 && (
-              <div className="mt-16 text-center text-gray-600">
-                No hay registros para “{tipoKey}”.
+                    <ul className="space-y-1 text-gray-700">
+                      <li>
+                        <span className="font-semibold">Identificación:</span>{" "}
+                        {animal.id}
+                      </li>
+                      <li>
+                        <span className="font-semibold">Especie:</span>{" "}
+                        {animal.especie}
+                      </li>
+                      <li>
+                        <span className="font-semibold">Raza:</span>{" "}
+                        {animal.raza}
+                      </li>
+                      <li>
+                        <span className="font-semibold">Sexo:</span>{" "}
+                        {animal.sexo}
+                      </li>
+                      {animal.fechaNacimiento && (
+                        <li>
+                          <span className="font-semibold">
+                            Fecha de nacimiento:
+                          </span>{" "}
+                          {animal.fechaNacimiento}
+                        </li>
+                      )}
+                      {animal.potreroActual && (
+                        <li>
+                          <span className="font-semibold">Potrero actual:</span>{" "}
+                          {animal.potreroActual}
+                        </li>
+                      )}
+                      <li>
+                        <span className="font-semibold">Peso:</span>{" "}
+                        {(animal.pesoKg ?? animal.peso) || "-"} kg
+                      </li>
+                    </ul>
+                  </article>
+                ))}
               </div>
             )}
           </section>
