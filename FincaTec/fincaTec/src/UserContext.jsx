@@ -230,6 +230,15 @@ export const UserProvider = ({ children }) => {
         peso: animalData.peso,
         grupo: animalData.grupo || null,
         foto: animalData.foto || getDefaultAnimalPhoto(animalData.especie),
+        informacionMedica: animalData.informacionMedica || {
+          historialVacunas: [],
+          historialEnfermedades: [],
+          observacionesVeterinario: '',
+          proximasVacunas: [],
+          tratamientosActivos: [],
+          fechaUltimaRevision: null,
+          veterinarioAsignado: null
+        },
         companyId: cid,
         createdAt: new Date().toISOString(),
         createdBy: user.email
@@ -326,6 +335,38 @@ export const UserProvider = ({ children }) => {
     } catch (error) {
       console.error('Error al actualizar animal:', error);
       return { success: false, error: 'Error al actualizar el animal' };
+    }
+  };
+
+  const updateMedicalInfo = (animalId, medicalData) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return { success: false, error: 'Debes pertenecer a una empresa para actualizar información médica' };
+
+      const livestock = readLS('livestock', {});
+      if (!livestock[cid]) return { success: false, error: 'No se encontraron animales' };
+
+      const idx = livestock[cid].findIndex(a => (a.identificacion || a.id) === animalId);
+      if (idx === -1) return { success: false, error: 'Animal no encontrado' };
+
+      // Actualizar la información médica
+      livestock[cid][idx] = {
+        ...livestock[cid][idx],
+        informacionMedica: {
+          ...livestock[cid][idx].informacionMedica,
+          ...medicalData,
+          fechaUltimaActualizacion: new Date().toISOString(),
+          actualizadoPor: user?.email || 'sistema'
+        },
+        updatedAt: new Date().toISOString(),
+        updatedBy: user?.email || 'sistema'
+      };
+
+      writeLS('livestock', livestock);
+      return { success: true, animal: livestock[cid][idx] };
+    } catch (error) {
+      console.error('Error al actualizar información médica:', error);
+      return { success: false, error: 'Error al actualizar la información médica' };
     }
   };
 
@@ -922,6 +963,7 @@ export const UserProvider = ({ children }) => {
     getCompanyLivestock,
     getAnimalById,
     updateAnimal,
+    updateMedicalInfo,
     deleteAnimal,
 
     // Potreros
