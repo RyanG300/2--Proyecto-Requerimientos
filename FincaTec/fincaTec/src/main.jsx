@@ -17,13 +17,16 @@ import { UserProvider } from './UserContext.jsx'
 import ProtectedRoute from './ProtectedRoute.jsx'
 import Perfil from './Perfil.jsx'
 import AddGrupos from './AddGrupos.jsx';
+import AgendarCita from './AgendarCita.jsx';
+import EditarCita from './EditarCita.jsx';
+import AuthenticatedHome from './AuthenticatedHome.jsx';
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <UserProvider>
       <BrowserRouter>
         <Routes>
-          {/* Ruta principal, login, register */}
-          <Route path="/" element={<MainMenu />} />
+          {/* Ruta principal que maneja automáticamente la autenticación */}
+          <Route path="/" element={<AuthenticatedHome />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
@@ -60,6 +63,13 @@ createRoot(document.getElementById('root')).render(
             </ProtectedRoute>
           } />
 
+          <Route path="/visualizar-potrero/:potreroId" element={
+            <ProtectedRoute>
+              <VisualizarPotrero />
+            </ProtectedRoute>
+          } />
+          
+          {/* Compatibilidad con la ruta anterior sin ID */}
           <Route path="/visualizar-potrero" element={
             <ProtectedRoute>
               <VisualizarPotrero />
@@ -88,6 +98,17 @@ createRoot(document.getElementById('root')).render(
         </ProtectedRoute>
       } />
 
+      <Route path="/agendar-cita" element={
+        <ProtectedRoute>
+          <AgendarCita />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/editar-cita/:citaId" element={
+        <ProtectedRoute>
+          <EditarCita />
+        </ProtectedRoute>
+      } />
 
         </Routes>
       </BrowserRouter>

@@ -6,10 +6,12 @@ import { useUser } from './UserContext';
 function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
-  const { user, logout, getUserCompany, getCompanyLivestock, getCompanyGroups } = useUser();
+  const { user, logout, getUserCompany, getCompanyLivestock, getCompanyGroups, getCompanyPotreros, syncAllPotrerosOcupacion, getCompanyCitas, cancelCita, deleteCita, isCompanyOwner } = useUser();
 
   const [companyLivestock, setCompanyLivestock] = useState([]);
-  const [companyGroups, setCompanyGroups] = useState([]); // 👈 grupos dinámicos
+  const [companyGroups, setCompanyGroups] = useState([]);
+  const [companyPotreros, setCompanyPotreros] = useState([]);
+  const [companyCitas, setCompanyCitas] = useState([]);
   const [userCompany, setUserCompany] = useState(null);
 
   // Cargar datos al montar / cuando cambie el usuario
@@ -17,11 +19,15 @@ function App() {
     const company = getUserCompany();
     const livestock = getCompanyLivestock();
     const groups = getCompanyGroups ? getCompanyGroups() : [];
+    const potreros = getCompanyPotreros ? getCompanyPotreros() : [];
+    const citas = getCompanyCitas ? getCompanyCitas() : [];
 
     setUserCompany(company);
     setCompanyLivestock(livestock);
     setCompanyGroups(groups);
-  }, [user, getUserCompany, getCompanyLivestock, getCompanyGroups]);
+    setCompanyPotreros(potreros);
+    setCompanyCitas(citas);
+  }, [user, getUserCompany, getCompanyLivestock, getCompanyGroups, getCompanyPotreros, getCompanyCitas]);
 
   // Logout
   const handleLogout = () => {
@@ -33,6 +39,47 @@ function App() {
 
   const handleCompanyView = () => navigate('/company-view');
   const handleGoToProfile = () => navigate('/perfil');
+
+  // Función para sincronizar potreros
+  const handleSyncPotreros = async () => {
+    try {
+      const result = syncAllPotrerosOcupacion();
+      if (result.success) {
+        alert(result.message);
+        // Recargar datos de potreros después de la sincronización
+        const updatedPotreros = getCompanyPotreros();
+        setCompanyPotreros(updatedPotreros);
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error al sincronizar:', error);
+      alert('Error inesperado al sincronizar');
+    }
+  };
+
+  // Función para cancelar cita
+  const handleCancelCita = (citaId) => {
+    if (window.confirm('¿Estás seguro de que quieres cancelar esta cita?')) {
+      try {
+        const result = deleteCita(citaId);
+        if (result.success) {
+          alert('Cita cancelada exitosamente');
+          // Eliminar la cita del estado local inmediatamente
+          setCompanyCitas(prevCitas => 
+            prevCitas.filter(cita => cita.id !== citaId)
+          );
+        } else {
+          alert(`Error: ${result.error}`);
+        }
+      } catch (error) {
+        console.error('Error al cancelar cita:', error);
+        alert('Error inesperado al cancelar la cita');
+      }
+    }
+  };
+
+
 
   // Filtrar ganado por búsqueda
   const filteredLivestock = companyLivestock.filter(animal =>
@@ -104,7 +151,9 @@ function App() {
             </p>
             <div className="text-sm text-gray-600 mt-2">
               <span className="font-semibold">Ubicación:</span> {userCompany?.location || 'No especificada'} |
-              <span className="font-semibold ml-2">Ganado registrado:</span> {companyLivestock.length} cabezas
+              <span className="font-semibold ml-2">Ganado:</span> {companyLivestock.length} cabezas |
+              <span className="font-semibold ml-2">Potreros:</span> {companyPotreros.length} |
+              <span className="font-semibold ml-2">Citas pendientes:</span> {companyCitas.filter(c => c.estado === 'pendiente').length}
             </div>
           </div>
         </section>
@@ -174,11 +223,67 @@ function App() {
 
             {/* Contenedor de potreros */}
             <section className="bg-white rounded-xl shadow-lg border-2 border-green-400 w-[520px] h-[600px] flex flex-col items-center p-8">
-              <div className="w-full flex items-center justify-between mb-4">
-                <span className="text-lg font-semibold text-green-700 mb-4">Potreros / Lotes</span>
-                <button onClick={() => navigate('/add-potreros')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition mb-4">Añadir potrero</button>
+              <div className="w-full flex items-center justify-between mb-2">
+                <span className="text-lg font-semibold text-green-700">Potreros / Lotes</span>
+                {isCompanyOwner() ? (
+                  <button onClick={() => navigate('/add-potreros')} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Añadir potrero</button>
+                ) : (
+                  <span className="text-sm text-gray-500 italic">Solo el propietario puede añadir potreros</span>
+                )}
               </div>
-              <div className="text-gray-500 text-center py-8">Sección en desarrollo...</div>
+              
+              {/* Botón de sincronización - Solo para propietarios */}
+              {isCompanyOwner() && (
+                <div className="w-full mb-4">
+                  <button 
+                    onClick={handleSyncPotreros}
+                    className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow transition text-sm"
+                  >
+                    🔄 Sincronizar ocupaciones
+                  </button>
+                </div>
+              )}
+
+              <div className="w-full flex-1 overflow-y-auto">
+                {companyPotreros.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No hay potreros registrados en tu empresa
+                  </div>
+                ) : (
+                  companyPotreros.map((potrero) => (
+                    <div key={potrero.id} className="flex items-center gap-4 bg-green-50 rounded-lg p-3 mb-4 shadow">
+                      <img
+                        src={potrero.foto || '/images/Potreros_relleno/potrero_1.png'}
+                        alt={potrero.nombre}
+                        className="w-20 h-20 object-cover rounded-lg border border-green-300"
+                        onError={(e) => { e.target.src = '/images/Potreros_relleno/potrero_1.png'; }}
+                      />
+                      <div className="flex-1">
+                        <div className="font-bold text-green-800">Nombre: {potrero.nombre}</div>
+                        <div className="text-sm text-gray-700">Capacidad: {potrero.capacidad} cabezas</div>
+                        <div className="text-sm text-gray-700">Ocupación: {potrero.ocupacionActual}/{potrero.capacidad}</div>
+                        <div className="text-sm text-gray-700">Ubicación: {potrero.provincia}, {potrero.canton}</div>
+                        <div className="text-sm text-gray-700">Estado: 
+                          <span className={`ml-1 px-2 py-1 rounded-full text-xs font-medium ${
+                            potrero.estado === 'Excelente calidad' ? 'bg-green-200 text-green-800' :
+                            potrero.estado === 'Buen estado' ? 'bg-blue-200 text-blue-800' :
+                            potrero.estado === 'Estado decente' ? 'bg-yellow-200 text-yellow-800' :
+                            'bg-red-200 text-red-800'
+                          }`}>
+                            {potrero.estado}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => navigate(`/visualizar-potrero/${potrero.id}`)}
+                        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition"
+                      >
+                        Visualizar
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
             </section>
           </div>
 
@@ -221,9 +326,102 @@ function App() {
               </div>
             </section>
 
-            {/* Segundo bloque futuro */}
-            <section className="bg-white rounded-xl shadow-lg border-2 border-green-400 w-[520px] h-[400px] flex flex-col items-center p-8 text-gray-400 italic">
-              (Espacio reservado para futuras funciones)
+            {/* Citas veterinarias */}
+            <section className="bg-white rounded-xl shadow-lg border-2 border-green-400 w-[520px] h-[400px] flex flex-col items-center p-8">
+              <div className="w-full flex items-center justify-between mb-4">
+                <span className="text-lg font-semibold text-green-700">Citas Veterinarias</span>
+                {isCompanyOwner() ? (
+                  <button
+                    onClick={() => navigate('/agendar-cita')}
+                    className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition"
+                  >
+                    Agendar cita
+                  </button>
+                ) : (
+                  <span className="text-sm text-gray-500 italic">Solo el propietario puede agendar citas</span>
+                )}
+              </div>
+
+
+
+              {/* Lista dinámica de citas */}
+              <div className="w-full flex-1 overflow-y-auto">
+                {companyCitas.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">
+                    No hay citas programadas. Agenda una nueva cita veterinaria.
+                  </p>
+                ) : (
+                  companyCitas
+                    .sort((a, b) => new Date(a.fechaCita) - new Date(b.fechaCita)) // Ordenar por fecha
+                    .map((cita) => {
+                      const fechaCita = new Date(cita.fechaCita);
+                      const esProxima = fechaCita >= new Date().setHours(0, 0, 0, 0);
+                      
+                      return (
+                        <div key={cita.id} className="bg-green-50 rounded-lg p-3 mb-3 shadow border">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <div className="font-bold text-green-800 text-sm">
+                                {cita.objetivoNombre}
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                {cita.servicio === 'chequeo' ? 'Chequeo médico' :
+                                 cita.servicio === 'vacunacion' ? 'Vacunación' :
+                                 cita.servicio === 'desparasitacion' ? 'Desparasitación' :
+                                 cita.servicio}
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                📅 {fechaCita.toLocaleDateString()} - {cita.horaCita}
+                              </div>
+                              <div className="mt-1">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  cita.estado === 'pendiente' ? 'bg-yellow-200 text-yellow-800' :
+                                  cita.estado === 'aceptada' ? 'bg-green-200 text-green-800' :
+                                  cita.estado === 'completada' ? 'bg-blue-200 text-blue-800' :
+                                  'bg-red-200 text-red-800'
+                                }`}>
+                                  {cita.estado === 'pendiente' ? 'Pendiente' :
+                                   cita.estado === 'aceptada' ? 'Aceptada' :
+                                   cita.estado === 'completada' ? 'Completada' :
+                                   cita.estado === 'cancelada' ? 'Cancelada' :
+                                   cita.estado}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Botones de acción - Solo para propietarios */}
+                            {isCompanyOwner() && (
+                              <div className="flex flex-col gap-1">
+                                {cita.estado === 'pendiente' && esProxima && (
+                                  <button
+                                    onClick={() => navigate(`/editar-cita/${cita.id}`)}
+                                    className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded shadow transition"
+                                  >
+                                    Editar
+                                  </button>
+                                )}
+                                {(cita.estado === 'pendiente' || cita.estado === 'aceptada') && esProxima && (
+                                  <button
+                                    onClick={() => handleCancelCita(cita.id)}
+                                    className="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded shadow transition"
+                                  >
+                                    Cancelar
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {cita.observaciones && (
+                            <div className="text-xs text-gray-600 bg-white p-2 rounded border-l-2 border-green-300">
+                              <strong>Observaciones:</strong> {cita.observaciones}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                )}
+              </div>
             </section>
           </div>
         </main>

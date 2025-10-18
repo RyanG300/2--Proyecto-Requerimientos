@@ -278,13 +278,49 @@ export const UserProvider = ({ children }) => {
       const idx = livestock[cid].findIndex(a => a.id === animalId);
       if (idx === -1) return { success: false, error: 'Animal no encontrado' };
 
+      const oldAnimal = livestock[cid][idx];
+      const oldGroup = oldAnimal.grupo;
+      const newGroup = updateData.grupo;
+
+      // Actualizar el animal
       livestock[cid][idx] = {
-        ...livestock[cid][idx],
+        ...oldAnimal,
         ...updateData,
         updatedAt: new Date().toISOString(),
         updatedBy: user.email
       };
       writeLS('livestock', livestock);
+
+      // Si cambió el grupo, actualizar los grupos correspondientes
+      if (oldGroup !== newGroup) {
+        const groups = readLS('groups', {});
+        
+        if (groups[cid]) {
+          // Remover del grupo anterior si existía
+          if (oldGroup) {
+            const oldGroupIdx = groups[cid].findIndex(g => g.id === oldGroup);
+            if (oldGroupIdx !== -1) {
+              groups[cid][oldGroupIdx].miembros = (groups[cid][oldGroupIdx].miembros || [])
+                .filter(id => id !== animalId);
+            }
+          }
+          
+          // Agregar al nuevo grupo si se especifica
+          if (newGroup) {
+            const newGroupIdx = groups[cid].findIndex(g => g.id === newGroup);
+            if (newGroupIdx !== -1) {
+              if (!groups[cid][newGroupIdx].miembros) {
+                groups[cid][newGroupIdx].miembros = [];
+              }
+              if (!groups[cid][newGroupIdx].miembros.includes(animalId)) {
+                groups[cid][newGroupIdx].miembros.push(animalId);
+              }
+            }
+          }
+          
+          writeLS('groups', groups);
+        }
+      }
 
       return { success: true, animal: livestock[cid][idx] };
     } catch (error) {
@@ -307,6 +343,238 @@ export const UserProvider = ({ children }) => {
     } catch (error) {
       console.error('Error al eliminar animal:', error);
       return { success: false, error: 'Error al eliminar el animal' };
+    }
+  };
+
+  // ====== POTREROS ======
+  const getCompanyPotreros = () => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return [];
+      const potreros = readLS('potreros', {});
+      return potreros[cid] || [];
+    } catch (e) {
+      console.error('Error al obtener potreros:', e);
+      return [];
+    }
+  };
+
+  const addPotrero = (potreroData) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return { success: false, error: 'Debes pertenecer a una empresa para agregar potreros' };
+
+      const potreros = readLS('potreros', {});
+      if (!potreros[cid]) potreros[cid] = [];
+
+      const newPotrero = {
+        id: `POT-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        nombre: potreroData.nombre,
+        capacidad: parseInt(potreroData.capacidad),
+        provincia: potreroData.provincia,
+        canton: potreroData.canton,
+        direccion: potreroData.direccion,
+        estado: potreroData.estado,
+        foto: potreroData.foto || null,
+        gruposAsignados: [],
+        ocupacionActual: 0,
+        companyId: cid,
+        createdAt: new Date().toISOString(),
+        createdBy: user.email
+      };
+
+      potreros[cid].push(newPotrero);
+      writeLS('potreros', potreros);
+
+      return { success: true, potrero: newPotrero };
+    } catch (error) {
+      console.error('Error al agregar potrero:', error);
+      return { success: false, error: 'Error al agregar el potrero' };
+    }
+  };
+
+  const getPotreroById = (potreroId) => {
+    try {
+      const arr = getCompanyPotreros();
+      return arr.find(p => p.id === potreroId) || null;
+    } catch (error) {
+      console.error('Error al obtener potrero por ID:', error);
+      return null;
+    }
+  };
+
+  const assignGroupToPotrero = (potreroId, grupoId) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return { success: false, error: 'Debes pertenecer a una empresa' };
+
+      const potreros = readLS('potreros', {});
+      const groups = readLS('groups', {});
+      
+      if (!potreros[cid] || !groups[cid]) {
+        return { success: false, error: 'No se encontraron datos' };
+      }
+
+      const potreroIdx = potreros[cid].findIndex(p => p.id === potreroId);
+      const grupo = groups[cid].find(g => g.id === grupoId);
+      
+      if (potreroIdx === -1) return { success: false, error: 'Potrero no encontrado' };
+      if (!grupo) return { success: false, error: 'Grupo no encontrado' };
+
+      const potrero = potreros[cid][potreroIdx];
+      
+      // Verificar si el grupo ya está asignado
+      if (potrero.gruposAsignados.includes(grupoId)) {
+        return { success: false, error: 'El grupo ya está asignado a este potrero' };
+      }
+
+      // Verificar capacidad
+      const nuevaOcupacion = potrero.ocupacionActual + grupo.miembros.length;
+      if (nuevaOcupacion > potrero.capacidad) {
+        return { 
+          success: false, 
+          error: `No hay suficiente capacidad. Disponible: ${potrero.capacidad - potrero.ocupacionActual}, Requerido: ${grupo.miembros.length}` 
+        };
+      }
+
+      // Asignar grupo al potrero
+      potrero.gruposAsignados.push(grupoId);
+      
+      // Actualizar el grupo con el potrero asignado
+      const grupoIdx = groups[cid].findIndex(g => g.id === grupoId);
+      if (grupoIdx !== -1) {
+        groups[cid][grupoIdx].potrero = potreroId;
+      }
+
+      // Recalcular ocupación actual basándose en grupos realmente asignados
+      const gruposAsignados = groups[cid].filter(g => 
+        potrero.gruposAsignados.includes(g.id)
+      );
+      potrero.ocupacionActual = gruposAsignados.reduce((total, grupo) => {
+        return total + (grupo.miembros?.length || 0);
+      }, 0);
+
+      writeLS('potreros', potreros);
+      writeLS('groups', groups);
+
+      return { success: true, potrero, grupo };
+    } catch (error) {
+      console.error('Error al asignar grupo a potrero:', error);
+      return { success: false, error: 'Error al asignar grupo' };
+    }
+  };
+
+  // Función para recalcular la ocupación actual de un potrero basándose en los grupos asignados
+  const recalculatePotreroOcupacion = (potreroId) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return 0;
+      
+      const potreros = readLS('potreros', {});
+      const groups = readLS('groups', {});
+      
+      if (!potreros[cid] || !groups[cid]) return 0;
+      
+      const potrero = potreros[cid].find(p => p.id === potreroId);
+      if (!potrero) return 0;
+      
+      // Calcular ocupación basándose en los grupos realmente asignados
+      const gruposAsignados = groups[cid].filter(g => 
+        potrero.gruposAsignados.includes(g.id)
+      );
+      
+      const ocupacionTotal = gruposAsignados.reduce((total, grupo) => {
+        return total + (grupo.miembros?.length || 0);
+      }, 0);
+      
+      return ocupacionTotal;
+    } catch (error) {
+      console.error('Error al recalcular ocupación:', error);
+      return 0;
+    }
+  };
+
+  // Función para sincronizar todas las ocupaciones de potreros
+  const syncAllPotrerosOcupacion = () => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return { success: false, error: 'Sin empresa' };
+      
+      const potreros = readLS('potreros', {});
+      const groups = readLS('groups', {});
+      
+      if (!potreros[cid]) return { success: true, message: 'No hay potreros para sincronizar' };
+      
+      let cambiosRealizados = 0;
+      
+      potreros[cid] = potreros[cid].map(potrero => {
+        const ocupacionAnterior = potrero.ocupacionActual;
+        const ocupacionCalculada = recalculatePotreroOcupacion(potrero.id);
+        
+        if (ocupacionAnterior !== ocupacionCalculada) {
+          cambiosRealizados++;
+          return { ...potrero, ocupacionActual: ocupacionCalculada };
+        }
+        
+        return potrero;
+      });
+      
+      if (cambiosRealizados > 0) {
+        writeLS('potreros', potreros);
+      }
+      
+      return { 
+        success: true, 
+        message: `Sincronización completada. ${cambiosRealizados} potreros actualizados.` 
+      };
+    } catch (error) {
+      console.error('Error al sincronizar ocupaciones:', error);
+      return { success: false, error: 'Error al sincronizar ocupaciones' };
+    }
+  };
+
+  const removeGroupFromPotrero = (potreroId, grupoId) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return { success: false, error: 'Debes pertenecer a una empresa' };
+
+      const potreros = readLS('potreros', {});
+      const groups = readLS('groups', {});
+      
+      if (!potreros[cid] || !groups[cid]) {
+        return { success: false, error: 'No se encontraron datos' };
+      }
+
+      const potreroIdx = potreros[cid].findIndex(p => p.id === potreroId);
+      const grupoIdx = groups[cid].findIndex(g => g.id === grupoId);
+      
+      if (potreroIdx === -1) return { success: false, error: 'Potrero no encontrado' };
+      if (grupoIdx === -1) return { success: false, error: 'Grupo no encontrado' };
+
+      const potrero = potreros[cid][potreroIdx];
+      const grupo = groups[cid][grupoIdx];
+
+      // Remover grupo del potrero
+      potrero.gruposAsignados = potrero.gruposAsignados.filter(id => id !== grupoId);
+      
+      // Remover potrero del grupo
+      groups[cid][grupoIdx].potrero = null;
+
+      // Recalcular ocupación actual basándose en grupos realmente asignados
+      const gruposAsignados = groups[cid].filter(g => 
+        potrero.gruposAsignados.includes(g.id)
+      );
+      potrero.ocupacionActual = gruposAsignados.reduce((total, grupo) => {
+        return total + (grupo.miembros?.length || 0);
+      }, 0);
+
+      writeLS('potreros', potreros);
+      writeLS('groups', groups);
+
+      return { success: true, potrero, grupo };
+    } catch (error) {
+      console.error('Error al remover grupo del potrero:', error);
+      return { success: false, error: 'Error al remover grupo' };
     }
   };
 
@@ -398,15 +666,56 @@ export const UserProvider = ({ children }) => {
       const idx = groups[cid].findIndex(g => g.id === groupId);
       if (idx === -1) return { success: false, error: 'Grupo no encontrado' };
 
-      groups[cid][idx] = {
-        ...groups[cid][idx],
+      const oldGroup = groups[cid][idx];
+      const updatedGroup = {
+        ...oldGroup,
         ...updateData,
         updatedAt: new Date().toISOString(),
         updatedBy: user?.email || 'sistema'
       };
+
+      groups[cid][idx] = updatedGroup;
       writeLS('groups', groups);
-      return { success: true, group: groups[cid][idx] };
+
+      // Si se actualizaron los miembros, sincronizar con los animales
+      if (updateData.miembros !== undefined) {
+        const livestock = readLS('livestock', {});
+        if (livestock[cid]) {
+          const oldMembers = new Set(oldGroup.miembros || []);
+          const newMembers = new Set(updateData.miembros || []);
+
+          livestock[cid] = livestock[cid].map(animal => {
+            const animalId = animal.identificacion || animal.id;
+            
+            // Si era miembro antes pero ya no, remover grupo
+            if (oldMembers.has(animalId) && !newMembers.has(animalId)) {
+              return { ...animal, grupo: null };
+            }
+            
+            // Si es nuevo miembro, asignar grupo
+            if (newMembers.has(animalId) && !oldMembers.has(animalId)) {
+              // Primero remover de cualquier otro grupo
+              const allGroups = groups[cid] || [];
+              allGroups.forEach((g, gIdx) => {
+                if (g.id !== groupId && g.miembros && g.miembros.includes(animalId)) {
+                  groups[cid][gIdx].miembros = g.miembros.filter(id => id !== animalId);
+                }
+              });
+              
+              return { ...animal, grupo: groupId };
+            }
+            
+            return animal;
+          });
+          
+          writeLS('livestock', livestock);
+          writeLS('groups', groups); // Guardar cambios en otros grupos
+        }
+      }
+
+      return { success: true, group: updatedGroup };
     } catch (e) {
+      console.error('Error al actualizar grupo:', e);
       return { success: false, error: 'Error al actualizar grupo' };
     }
   };
@@ -418,6 +727,10 @@ export const UserProvider = ({ children }) => {
       const groups = readLS('groups', {});
       if (!groups[cid]) return { success: false, error: 'No hay grupos' };
 
+      // Obtener información del grupo antes de eliminarlo
+      const grupoAEliminar = groups[cid].find(g => g.id === groupId);
+      if (!grupoAEliminar) return { success: false, error: 'Grupo no encontrado' };
+
       // Quitar grupo de los animales que lo tenían
       const livestock = readLS('livestock', {});
       if (livestock[cid]) {
@@ -425,11 +738,164 @@ export const UserProvider = ({ children }) => {
         writeLS('livestock', livestock);
       }
 
+      // Quitar grupo de cualquier potrero que lo tuviera asignado
+      const potreros = readLS('potreros', {});
+      if (potreros[cid]) {
+        potreros[cid] = potreros[cid].map(potrero => {
+          if (potrero.gruposAsignados && potrero.gruposAsignados.includes(groupId)) {
+            const gruposRestantes = potrero.gruposAsignados.filter(id => id !== groupId);
+            
+            // Recalcular ocupación basándose en los grupos restantes
+            const gruposAsignados = groups[cid].filter(g => 
+              gruposRestantes.includes(g.id) && g.id !== groupId // Excluir el grupo que se está eliminando
+            );
+            const nuevaOcupacion = gruposAsignados.reduce((total, grupo) => {
+              return total + (grupo.miembros?.length || 0);
+            }, 0);
+            
+            return {
+              ...potrero,
+              gruposAsignados: gruposRestantes,
+              ocupacionActual: nuevaOcupacion
+            };
+          }
+          return potrero;
+        });
+        writeLS('potreros', potreros);
+      }
+
+      // Eliminar el grupo
       groups[cid] = groups[cid].filter(g => g.id !== groupId);
       writeLS('groups', groups);
+      
       return { success: true };
     } catch (e) {
+      console.error('Error al eliminar grupo:', e);
       return { success: false, error: 'Error al eliminar grupo' };
+    }
+  };
+
+  // ====== CITAS VETERINARIAS ======
+  const getCompanyCitas = () => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return [];
+      const citas = readLS('citas', {});
+      return citas[cid] || [];
+    } catch (e) {
+      console.error('Error al obtener citas:', e);
+      return [];
+    }
+  };
+
+  const addCita = (citaData) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return { success: false, error: 'Debes pertenecer a una empresa para agendar citas' };
+
+      // Validaciones básicas
+      if (!citaData.tipo || !citaData.servicio || !citaData.fechaCita) {
+        return { success: false, error: 'Tipo, servicio y fecha son requeridos' };
+      }
+
+      const citas = readLS('citas', {});
+      if (!citas[cid]) citas[cid] = [];
+
+      const newCita = {
+        id: `cita_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        tipo: citaData.tipo, // 'individual' o 'grupo'
+        objetivoId: citaData.objetivoId, // ID del animal o grupo
+        objetivoNombre: citaData.objetivoNombre, // Nombre para mostrar
+        servicio: citaData.servicio, // 'chequeo', 'vacunacion', 'desparasitacion'
+        fechaCita: citaData.fechaCita,
+        horaCita: citaData.horaCita || '09:00',
+        observaciones: citaData.observaciones || '',
+        estado: 'pendiente', // 'pendiente', 'aceptada', 'completada', 'cancelada'
+        veterinarioEmail: null, // Se asignará cuando un veterinario acepte
+        createdAt: new Date().toISOString(),
+        createdBy: user?.email || 'sistema'
+      };
+
+      citas[cid] = [newCita, ...(citas[cid] || [])];
+      writeLS('citas', citas);
+
+      return { success: true, cita: newCita };
+    } catch (error) {
+      console.error('Error al crear cita:', error);
+      return { success: false, error: 'Error interno al crear cita' };
+    }
+  };
+
+  const updateCita = (citaId, updateData) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return { success: false, error: 'Sin empresa' };
+      
+      const citas = readLS('citas', {});
+      if (!citas[cid]) return { success: false, error: 'No hay citas' };
+
+      const idx = citas[cid].findIndex(c => c.id === citaId);
+      if (idx === -1) return { success: false, error: 'Cita no encontrada' };
+
+      const updatedCita = {
+        ...citas[cid][idx],
+        ...updateData,
+        updatedAt: new Date().toISOString(),
+        updatedBy: user?.email || 'sistema'
+      };
+
+      citas[cid][idx] = updatedCita;
+      writeLS('citas', citas);
+
+      return { success: true, cita: updatedCita };
+    } catch (e) {
+      console.error('Error al actualizar cita:', e);
+      return { success: false, error: 'Error al actualizar cita' };
+    }
+  };
+
+  const cancelCita = (citaId) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return { success: false, error: 'Sin empresa' };
+      
+      const citas = readLS('citas', {});
+      if (!citas[cid]) return { success: false, error: 'No hay citas' };
+
+      const idx = citas[cid].findIndex(c => c.id === citaId);
+      if (idx === -1) return { success: false, error: 'Cita no encontrada' };
+
+      // Marcar como cancelada en lugar de eliminar
+      citas[cid][idx] = {
+        ...citas[cid][idx],
+        estado: 'cancelada',
+        canceladaAt: new Date().toISOString(),
+        canceladaBy: user?.email || 'sistema'
+      };
+
+      writeLS('citas', citas);
+      return { success: true };
+    } catch (e) {
+      console.error('Error al cancelar cita:', e);
+      return { success: false, error: 'Error al cancelar cita' };
+    }
+  };
+
+  const deleteCita = (citaId) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return { success: false, error: 'Sin empresa' };
+      
+      const citas = readLS('citas', {});
+      if (!citas[cid]) return { success: false, error: 'No hay citas' };
+
+      citas[cid] = citas[cid].filter(c => c.id !== citaId);
+      writeLS('citas', citas);
+      
+      return { success: true };
+    } catch (e) {
+      console.error('Error al eliminar cita:', e);
+      return { success: false, error: 'Error al eliminar cita' };
     }
   };
 
@@ -458,13 +924,29 @@ export const UserProvider = ({ children }) => {
     updateAnimal,
     deleteAnimal,
 
-    // Grupos (nuevo)
+    // Potreros
+    getCompanyPotreros,
+    addPotrero,
+    getPotreroById,
+    assignGroupToPotrero,
+    removeGroupFromPotrero,
+    recalculatePotreroOcupacion,
+    syncAllPotrerosOcupacion,
+
+    // Grupos
     getCompanyGroups,
     addGroup,
     checkGroupExists,
     listAnimals,
-    updateGroup,  // opcional
-    deleteGroup,  // opcional
+    updateGroup,
+    deleteGroup,
+
+    // Citas Veterinarias
+    getCompanyCitas,
+    addCita,
+    updateCita,
+    cancelCita,
+    deleteCita,
   };
 
   return (
