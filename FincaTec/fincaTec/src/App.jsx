@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from './UserContext';
 
+
 function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
-  const { user, logout, getUserCompany, getCompanyLivestock, getCompanyGroups, getCompanyPotreros, syncAllPotrerosOcupacion, getCompanyCitas, cancelCita, deleteCita, isCompanyOwner } = useUser();
+  const { user, logout, getUserCompany, getCompanyLivestock, getCompanyGroups, getCompanyPotreros, syncAllPotrerosOcupacion, getCompanyCitas, deleteCita, isCompanyOwner } = useUser();
 
   const [companyLivestock, setCompanyLivestock] = useState([]);
   const [companyGroups, setCompanyGroups] = useState([]);
@@ -67,7 +68,7 @@ function App() {
         if (result.success) {
           alert('Cita cancelada exitosamente');
           // Eliminar la cita del estado local inmediatamente
-          setCompanyCitas(prevCitas => 
+          setCompanyCitas(prevCitas =>
             prevCitas.filter(cita => cita.id !== citaId)
           );
         } else {
@@ -114,14 +115,15 @@ function App() {
     <>
       <div className="min-h-screen bg-gray-100">
         {/* Header */}
+
         <header className="w-full flex items-center justify-between px-6 py-3 bg-gradient-to-r from-green-500 via-green-400 to-green-300 shadow-md">
           <img src="/images/Menu_finquero/icono_FincaTec.png" alt="FincaTec Logo" />
 
-         
+
 
           <div className="flex-1 flex items-center justify-center">
             <div className="flex items-center gap-3 px-6 py-2 rounded-full bg-gradient-to-r from-green-200 via-green-100 to-green-300 shadow-lg border border-green-400">
-              <svg className="w-7 h-7 text-green-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-7 8-7s8 3 8 7"/></svg>
+              <svg className="w-7 h-7 text-green-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 4-7 8-7s8 3 8 7" /></svg>
               <span className="text-xl font-bold text-green-900 tracking-wide">
                 ¡Bienvenido, {user?.name || user?.email || 'Usuario'}!
               </span>
@@ -129,6 +131,8 @@ function App() {
           </div>
 
           <div className="flex gap-4 items-center">
+
+            
             <button onClick={handleGoToProfile} className="bg-white hover:bg-blue-200 rounded-xl flex flex-col items-center shadow px-2 py-1 transition">
               <img src="images/Menu_finqueros/icono_perfil.png" alt="Perfil" className="w-10 h-10" />
               <span className="font-bold text-green-700">Perfil</span>
@@ -234,11 +238,11 @@ function App() {
                   <span className="text-sm text-gray-500 italic">Solo el propietario puede añadir potreros</span>
                 )}
               </div>
-              
+
               {/* Botón de sincronización - Solo para propietarios */}
               {isCompanyOwner() && (
                 <div className="w-full mb-4">
-                  <button 
+                  <button
                     onClick={handleSyncPotreros}
                     className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow transition text-sm"
                   >
@@ -266,13 +270,12 @@ function App() {
                         <div className="text-sm text-gray-700">Capacidad: {potrero.capacidad} cabezas</div>
                         <div className="text-sm text-gray-700">Ocupación: {potrero.ocupacionActual}/{potrero.capacidad}</div>
                         <div className="text-sm text-gray-700">Ubicación: {potrero.provincia}, {potrero.canton}</div>
-                        <div className="text-sm text-gray-700">Estado: 
-                          <span className={`ml-1 px-2 py-1 rounded-full text-xs font-medium ${
-                            potrero.estado === 'Excelente calidad' ? 'bg-green-200 text-green-800' :
+                        <div className="text-sm text-gray-700">Estado:
+                          <span className={`ml-1 px-2 py-1 rounded-full text-xs font-medium ${potrero.estado === 'Excelente calidad' ? 'bg-green-200 text-green-800' :
                             potrero.estado === 'Buen estado' ? 'bg-blue-200 text-blue-800' :
-                            potrero.estado === 'Estado decente' ? 'bg-yellow-200 text-yellow-800' :
-                            'bg-red-200 text-red-800'
-                          }`}>
+                              potrero.estado === 'Estado decente' ? 'bg-yellow-200 text-yellow-800' :
+                                'bg-red-200 text-red-800'
+                            }`}>
                             {potrero.estado}
                           </span>
                         </div>
@@ -359,7 +362,7 @@ function App() {
                     .map((cita) => {
                       const fechaCita = new Date(cita.fechaCita);
                       const esProxima = fechaCita >= new Date().setHours(0, 0, 0, 0);
-                      
+
                       return (
                         <div key={cita.id} className="bg-green-50 rounded-lg p-3 mb-3 shadow border">
                           <div className="flex items-start justify-between mb-2">
@@ -369,29 +372,28 @@ function App() {
                               </div>
                               <div className="text-xs text-gray-600">
                                 {cita.servicio === 'chequeo' ? 'Chequeo médico' :
-                                 cita.servicio === 'vacunacion' ? 'Vacunación' :
-                                 cita.servicio === 'desparasitacion' ? 'Desparasitación' :
-                                 cita.servicio}
+                                  cita.servicio === 'vacunacion' ? 'Vacunación' :
+                                    cita.servicio === 'desparasitacion' ? 'Desparasitación' :
+                                      cita.servicio}
                               </div>
                               <div className="text-xs text-gray-600">
                                 📅 {fechaCita.toLocaleDateString()} - {cita.horaCita}
                               </div>
                               <div className="mt-1">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  cita.estado === 'pendiente' ? 'bg-yellow-200 text-yellow-800' :
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${cita.estado === 'pendiente' ? 'bg-yellow-200 text-yellow-800' :
                                   cita.estado === 'aceptada' ? 'bg-green-200 text-green-800' :
-                                  cita.estado === 'completada' ? 'bg-blue-200 text-blue-800' :
-                                  'bg-red-200 text-red-800'
-                                }`}>
+                                    cita.estado === 'completada' ? 'bg-blue-200 text-blue-800' :
+                                      'bg-red-200 text-red-800'
+                                  }`}>
                                   {cita.estado === 'pendiente' ? 'Pendiente' :
-                                   cita.estado === 'aceptada' ? 'Aceptada' :
-                                   cita.estado === 'completada' ? 'Completada' :
-                                   cita.estado === 'cancelada' ? 'Cancelada' :
-                                   cita.estado}
+                                    cita.estado === 'aceptada' ? 'Aceptada' :
+                                      cita.estado === 'completada' ? 'Completada' :
+                                        cita.estado === 'cancelada' ? 'Cancelada' :
+                                          cita.estado}
                                 </span>
                               </div>
                             </div>
-                            
+
                             {/* Botones de acción - Solo para propietarios */}
                             {isCompanyOwner() && (
                               <div className="flex flex-col gap-1">
@@ -414,7 +416,7 @@ function App() {
                               </div>
                             )}
                           </div>
-                          
+
                           {cita.observaciones && (
                             <div className="text-xs text-gray-600 bg-white p-2 rounded border-l-2 border-green-300">
                               <strong>Observaciones:</strong> {cita.observaciones}

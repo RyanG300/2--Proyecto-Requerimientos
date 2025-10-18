@@ -20,6 +20,10 @@ import AddGrupos from './AddGrupos.jsx';
 import AgendarCita from './AgendarCita.jsx';
 import EditarCita from './EditarCita.jsx';
 import AuthenticatedHome from './AuthenticatedHome.jsx';
+
+import RegisterVet from './RegisterVet.jsx';
+import VetProfile from './VetProfile.jsx';
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <UserProvider>
@@ -30,19 +34,17 @@ createRoot(document.getElementById('root')).render(
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Rutas protegidas */}
-          <Route path="/company-view" element={
-            <ProtectedRoute>
-              <CompanyView/>
-            </ProtectedRoute>
-          } />
+          
+
+
+         
 
           <Route path="/App" element={
             <ProtectedRoute>
               <App />
             </ProtectedRoute>
           } />
-          
+
           <Route path="/add-ganado" element={
             <ProtectedRoute>
               <AddGanado />
@@ -55,7 +57,7 @@ createRoot(document.getElementById('root')).render(
               <VisualizarGanado />
             </ProtectedRoute>
           } />
-          
+
           {/* Compatibilidad con la ruta anterior sin ID */}
           <Route path="/visualizar-ganado" element={
             <ProtectedRoute>
@@ -68,7 +70,7 @@ createRoot(document.getElementById('root')).render(
               <VisualizarPotrero />
             </ProtectedRoute>
           } />
-          
+
           {/* Compatibilidad con la ruta anterior sin ID */}
           <Route path="/visualizar-potrero" element={
             <ProtectedRoute>
@@ -92,23 +94,23 @@ createRoot(document.getElementById('root')).render(
               <Perfil />
             </ProtectedRoute>
           } />
-      <Route path="/add-grupos" element={
-        <ProtectedRoute>
-          <AddGrupos />
-        </ProtectedRoute>
-      } />
+          <Route path="/add-grupos" element={
+            <ProtectedRoute>
+              <AddGrupos />
+            </ProtectedRoute>
+          } />
 
-      <Route path="/agendar-cita" element={
-        <ProtectedRoute>
-          <AgendarCita />
-        </ProtectedRoute>
-      } />
+          <Route path="/agendar-cita" element={
+            <ProtectedRoute>
+              <AgendarCita />
+            </ProtectedRoute>
+          } />
 
-      <Route path="/editar-cita/:citaId" element={
-        <ProtectedRoute>
-          <EditarCita />
-        </ProtectedRoute>
-      } />
+          <Route path="/editar-cita/:citaId" element={
+            <ProtectedRoute>
+              <EditarCita />
+            </ProtectedRoute>
+          } />
 
         </Routes>
       </BrowserRouter>
