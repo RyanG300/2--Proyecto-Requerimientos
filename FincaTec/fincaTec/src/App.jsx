@@ -1,5 +1,6 @@
 // src/App.jsx
-import { useState, useEffect } from 'react'
+
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from './UserContext';
 
@@ -114,7 +115,9 @@ function App() {
       <div className="min-h-screen bg-gray-100">
         {/* Header */}
         <header className="w-full flex items-center justify-between px-6 py-3 bg-gradient-to-r from-green-500 via-green-400 to-green-300 shadow-md">
-          <img src="images/Menu_finqueros/icono_FincaTec.png" alt="Logo FincaTec" width="100" height="50" className="bg-white rounded-3xl p-1 shadow-md"/>
+          <img src="/images/Menu_finquero/icono_FincaTec.png" alt="FincaTec Logo" />
+
+         
 
           <div className="flex-1 flex items-center justify-center">
             <div className="flex items-center gap-3 px-6 py-2 rounded-full bg-gradient-to-r from-green-200 via-green-100 to-green-300 shadow-lg border border-green-400">
