@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "./UserContext";
+import VetMedicalEditor from "./components/VetMedicalEditor"; // ← asegúrate de esta ruta
 
 export default function PerfilVeterinario() {
   const {
@@ -11,11 +12,16 @@ export default function PerfilVeterinario() {
     acceptCita,
     completeCita,
     cancelCita,
+    rejectCita, // ← nueva acción
   } = useUser();
 
   const navigate = useNavigate();
   const [disponibles, setDisponibles] = useState([]);
   const [asignadas, setAsignadas] = useState([]);
+
+  // modal editor médico
+  const [medOpen, setMedOpen] = useState(false);
+  const [animalTarget, setAnimalTarget] = useState(null);
 
   const cargar = () => {
     setDisponibles(getAllPendingCitas());
@@ -51,6 +57,20 @@ export default function PerfilVeterinario() {
     if (r?.success) cargar();
   };
 
+  const handleRechazar = async (cita) => {
+    const r = await rejectCita(cita.id);
+    if (r?.success) cargar();
+  };
+
+  const abrirEditor = (cita) => {
+    if (cita.tipo !== "individual") {
+      alert("Para citas de grupo, abre el animal desde el módulo de ganado.");
+      return;
+    }
+    setAnimalTarget(cita.objetivoId); // arete/ID del animal
+    setMedOpen(true);
+  };
+
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -83,7 +103,9 @@ export default function PerfilVeterinario() {
             {disponibles.map((c) => (
               <div key={c.id} className="p-4 border rounded-lg bg-yellow-50 flex justify-between">
                 <div>
-                  <p><b>{c.servicio === 'chequeo' ? 'Chequeo médico' : c.servicio}</b> — {c.objetivoNombre}</p>
+                  <p>
+                    <b>{c.servicio === "chequeo" ? "Chequeo médico" : c.servicio}</b> — {c.objetivoNombre}
+                  </p>
                   <p className="text-sm text-gray-600">{formatFechaHora(c.fechaCita, c.horaCita)}</p>
                   <p className="text-sm">Estado: <span className="font-semibold">{c.estado}</span></p>
                 </div>
@@ -115,31 +137,60 @@ export default function PerfilVeterinario() {
         ) : (
           <div className="grid gap-3">
             {asignadas.map((c) => (
-              <div key={c.id} className="p-4 border rounded-lg bg-green-50 flex justify-between">
-                <div>
-                  <p><b>{c.servicio === 'chequeo' ? 'Chequeo médico' : c.servicio}</b> — {c.objetivoNombre}</p>
-                  <p className="text-sm text-gray-600">{formatFechaHora(c.fechaCita, c.horaCita)}</p>
-                  <p className="text-sm">Estado: <span className="font-semibold">{c.estado}</span></p>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <button
-                    onClick={() => handleCompletar(c)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm"
-                  >
-                    Completar
-                  </button>
-                  <button
-                    onClick={() => handleCancelar(c)}
-                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm"
-                  >
-                    Cancelar
-                  </button>
+              <div key={c.id} className="p-4 border rounded-lg bg-green-50">
+                <div className="flex justify-between">
+                  <div>
+                    <p>
+                      <b>{c.servicio === "chequeo" ? "Chequeo médico" : c.servicio}</b> — {c.objetivoNombre}
+                    </p>
+                    <p className="text-sm text-gray-600">{formatFechaHora(c.fechaCita, c.horaCita)}</p>
+                    <p className="text-sm">Estado: <span className="font-semibold">{c.estado}</span></p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => handleCompletar(c)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm"
+                    >
+                      Completar
+                    </button>
+                    <button
+                      onClick={() => handleCancelar(c)}
+                      className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() => handleRechazar(c)}
+                      className="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-lg text-sm"
+                    >
+                      Rechazar
+                    </button>
+                    <button
+                      onClick={() => abrirEditor(c)}
+                      className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-lg text-sm"
+                    >
+                      Actualizar info médica
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
       </section>
+
+      {/* Modal para editar información médica del animal */}
+      {medOpen && (
+        <VetMedicalEditor
+          animalId={animalTarget}
+          open={medOpen}
+          onClose={() => setMedOpen(false)}
+          onSaved={() => {
+            setMedOpen(false);
+            cargar(); // refresca por si quieres ver cambios en la UI
+          }}
+        />
+      )}
     </div>
   );
 }

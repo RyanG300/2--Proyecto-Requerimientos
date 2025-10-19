@@ -1,22 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-// Crear el contexto
+/* ===================== CONTEXTO Y HOOK ===================== */
 const UserContext = createContext();
 
-// Hook personalizado para usar el contexto
 export const useUser = () => {
-  const context = useContext(UserContext);
-  if (!context) {
-    throw new Error('useUser debe ser usado dentro de un UserProvider');
-  }
-  return context;
+  const ctx = useContext(UserContext);
+  if (!ctx) throw new Error('useUser debe ser usado dentro de un UserProvider');
+  return ctx;
 };
 
-// Helpers internos
+/* ===================== HELPERS ===================== */
 const getDefaultAnimalPhoto = (especie) => {
   const defaults = {
     'Bovino': '/images/Ganado_Bovino/vaca_1.png',
-    'Ovino': '/images/Ganado_Ovino/oveja_1.png',
+    'Ovino' : '/images/Ganado_Ovino/oveja_1.png',
     'Caprino': '/images/Ganado_Caprino/cabra_1.png'
   };
   return defaults[especie] || '/images/Ganado_Relleno/animal_default.png';
@@ -35,14 +32,12 @@ const writeLS = (key, value) => {
   localStorage.setItem(key, JSON.stringify(value));
 };
 
-const toEmail = (s) => (s || '').toString().trim().toLowerCase();
-
-// Proveedor del contexto
+/* ===================== PROVIDER ===================== */
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Cargar usuario
+  /* ---------- cargar usuario ---------- */
   useEffect(() => {
     try {
       const loggedUser = localStorage.getItem('loggedUser');
@@ -55,7 +50,7 @@ export const UserProvider = ({ children }) => {
     }
   }, []);
 
-  // ====== AUTENTICACIÓN ======
+  /* ===================== AUTENTICACIÓN ===================== */
   const login = (userData) => {
     try {
       setUser(userData);
@@ -93,7 +88,7 @@ export const UserProvider = ({ children }) => {
   const isAuthenticated = () => user !== null;
   const getUserInfo = (field) => (user ? user[field] : null);
 
-  // ====== EMPRESAS ======
+  /* ===================== EMPRESAS ===================== */
   const generateCompanyId = () => `EMP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
   const createCompany = (companyData) => {
@@ -190,13 +185,13 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  // ====== UTILIDADES VINCULADAS A EMPRESA ======
+  /* ===================== UTILIDADES EMPRESA ===================== */
   const getCompanyId = () => {
     const c = getUserCompany();
     return c?.id || null;
   };
 
-  // ====== GANADO ======
+  /* ===================== GANADO ===================== */
   const checkAreteExists = (arete) => {
     try {
       const cid = getCompanyId();
@@ -293,7 +288,6 @@ export const UserProvider = ({ children }) => {
       const oldGroup = oldAnimal.grupo;
       const newGroup = updateData.grupo;
 
-      // Actualizar el animal
       livestock[cid][idx] = {
         ...oldAnimal,
         ...updateData,
@@ -302,12 +296,9 @@ export const UserProvider = ({ children }) => {
       };
       writeLS('livestock', livestock);
 
-      // Si cambió el grupo, actualizar los grupos correspondientes
       if (oldGroup !== newGroup) {
         const groups = readLS('groups', {});
-
         if (groups[cid]) {
-          // Remover del grupo anterior si existía
           if (oldGroup) {
             const oldGroupIdx = groups[cid].findIndex(g => g.id === oldGroup);
             if (oldGroupIdx !== -1) {
@@ -315,8 +306,6 @@ export const UserProvider = ({ children }) => {
                 .filter(id => id !== animalId);
             }
           }
-
-          // Agregar al nuevo grupo si se especifica
           if (newGroup) {
             const newGroupIdx = groups[cid].findIndex(g => g.id === newGroup);
             if (newGroupIdx !== -1) {
@@ -328,7 +317,6 @@ export const UserProvider = ({ children }) => {
               }
             }
           }
-
           writeLS('groups', groups);
         }
       }
@@ -340,6 +328,7 @@ export const UserProvider = ({ children }) => {
     }
   };
 
+  /* ==== Información médica (local) con normalización de arrays ==== */
   const updateMedicalInfo = (animalId, medicalData) => {
     try {
       const cid = getCompanyId();
@@ -351,12 +340,20 @@ export const UserProvider = ({ children }) => {
       const idx = livestock[cid].findIndex(a => (a.identificacion || a.id) === animalId);
       if (idx === -1) return { success: false, error: 'Animal no encontrado' };
 
-      // Actualizar la información médica
+      const prev = livestock[cid][idx].informacionMedica || {};
+      const norm = {
+        historialVacunas: Array.isArray(prev.historialVacunas) ? prev.historialVacunas : [],
+        historialEnfermedades: Array.isArray(prev.historialEnfermedades) ? prev.historialEnfermedades : [],
+        proximasVacunas: Array.isArray(prev.proximasVacunas) ? prev.proximasVacunas : [],
+        tratamientosActivos: Array.isArray(prev.tratamientosActivos) ? prev.tratamientosActivos : [],
+        ...prev,
+        ...medicalData,
+      };
+
       livestock[cid][idx] = {
         ...livestock[cid][idx],
         informacionMedica: {
-          ...livestock[cid][idx].informacionMedica,
-          ...medicalData,
+          ...norm,
           fechaUltimaActualizacion: new Date().toISOString(),
           actualizadoPor: user?.email || 'sistema'
         },
@@ -389,7 +386,7 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  // ====== POTREROS ======
+  /* ===================== POTREROS ===================== */
   const getCompanyPotreros = () => {
     try {
       const cid = getCompanyId();
@@ -453,49 +450,31 @@ export const UserProvider = ({ children }) => {
 
       const potreros = readLS('potreros', {});
       const groups = readLS('groups', {});
-
-      if (!potreros[cid] || !groups[cid]) {
-        return { success: false, error: 'No se encontraron datos' };
-      }
+      if (!potreros[cid] || !groups[cid]) return { success: false, error: 'No se encontraron datos' };
 
       const potreroIdx = potreros[cid].findIndex(p => p.id === potreroId);
       const grupo = groups[cid].find(g => g.id === grupoId);
-
       if (potreroIdx === -1) return { success: false, error: 'Potrero no encontrado' };
       if (!grupo) return { success: false, error: 'Grupo no encontrado' };
 
       const potrero = potreros[cid][potreroIdx];
 
-      // Verificar si el grupo ya está asignado
       if (potrero.gruposAsignados.includes(grupoId)) {
         return { success: false, error: 'El grupo ya está asignado a este potrero' };
       }
 
-      // Verificar capacidad
-      const nuevaOcupacion = potrero.ocupacionActual + grupo.miembros.length;
+      const nuevaOcupacion = potrero.ocupacionActual + (grupo.miembros?.length || 0);
       if (nuevaOcupacion > potrero.capacidad) {
-        return {
-          success: false,
-          error: `No hay suficiente capacidad. Disponible: ${potrero.capacidad - potrero.ocupacionActual}, Requerido: ${grupo.miembros.length}`
-        };
+        return { success: false, error: `No hay suficiente capacidad. Disponible: ${potrero.capacidad - potrero.ocupacionActual}, Requerido: ${grupo.miembros?.length || 0}` };
       }
 
-      // Asignar grupo al potrero
       potrero.gruposAsignados.push(grupoId);
 
-      // Actualizar el grupo con el potrero asignado
       const grupoIdx = groups[cid].findIndex(g => g.id === grupoId);
-      if (grupoIdx !== -1) {
-        groups[cid][grupoIdx].potrero = potreroId;
-      }
+      if (grupoIdx !== -1) groups[cid][grupoIdx].potrero = potreroId;
 
-      // Recalcular ocupación actual basándose en grupos realmente asignados
-      const gruposAsignados = groups[cid].filter(g =>
-        potrero.gruposAsignados.includes(g.id)
-      );
-      potrero.ocupacionActual = gruposAsignados.reduce((total, grupo) => {
-        return total + (grupo.miembros?.length || 0);
-      }, 0);
+      const gruposAsignados = groups[cid].filter(g => potrero.gruposAsignados.includes(g.id));
+      potrero.ocupacionActual = gruposAsignados.reduce((t, g) => t + (g.miembros?.length || 0), 0);
 
       writeLS('potreros', potreros);
       writeLS('groups', groups);
@@ -507,7 +486,6 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  // Función para recalcular la ocupación actual de un potrero basándose en los grupos asignados
   const recalculatePotreroOcupacion = (potreroId) => {
     try {
       const cid = getCompanyId();
@@ -515,21 +493,13 @@ export const UserProvider = ({ children }) => {
 
       const potreros = readLS('potreros', {});
       const groups = readLS('groups', {});
-
       if (!potreros[cid] || !groups[cid]) return 0;
 
       const potrero = potreros[cid].find(p => p.id === potreroId);
       if (!potrero) return 0;
 
-      // Calcular ocupación basándose en los grupos realmente asignados
-      const gruposAsignados = groups[cid].filter(g =>
-        potrero.gruposAsignados.includes(g.id)
-      );
-
-      const ocupacionTotal = gruposAsignados.reduce((total, grupo) => {
-        return total + (grupo.miembros?.length || 0);
-      }, 0);
-
+      const gruposAsignados = groups[cid].filter(g => potrero.gruposAsignados.includes(g.id));
+      const ocupacionTotal = gruposAsignados.reduce((t, g) => t + (g.miembros?.length || 0), 0);
       return ocupacionTotal;
     } catch (error) {
       console.error('Error al recalcular ocupación:', error);
@@ -537,39 +507,27 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  // Función para sincronizar todas las ocupaciones de potreros
   const syncAllPotrerosOcupacion = () => {
     try {
       const cid = getCompanyId();
       if (!cid) return { success: false, error: 'Sin empresa' };
 
       const potreros = readLS('potreros', {});
-      const groups = readLS('groups', {});
-
       if (!potreros[cid]) return { success: true, message: 'No hay potreros para sincronizar' };
 
-      let cambiosRealizados = 0;
-
-      potreros[cid] = potreros[cid].map(potrero => {
-        const ocupacionAnterior = potrero.ocupacionActual;
-        const ocupacionCalculada = recalculatePotreroOcupacion(potrero.id);
-
-        if (ocupacionAnterior !== ocupacionCalculada) {
-          cambiosRealizados++;
-          return { ...potrero, ocupacionActual: ocupacionCalculada };
+      let cambios = 0;
+      potreros[cid] = potreros[cid].map(p => {
+        const anterior = p.ocupacionActual;
+        const calculada = recalculatePotreroOcupacion(p.id);
+        if (anterior !== calculada) {
+          cambios++;
+          return { ...p, ocupacionActual: calculada };
         }
-
-        return potrero;
+        return p;
       });
 
-      if (cambiosRealizados > 0) {
-        writeLS('potreros', potreros);
-      }
-
-      return {
-        success: true,
-        message: `Sincronización completada. ${cambiosRealizados} potreros actualizados.`
-      };
+      if (cambios > 0) writeLS('potreros', potreros);
+      return { success: true, message: `Sincronización completada. ${cambios} potreros actualizados.` };
     } catch (error) {
       console.error('Error al sincronizar ocupaciones:', error);
       return { success: false, error: 'Error al sincronizar ocupaciones' };
@@ -583,45 +541,31 @@ export const UserProvider = ({ children }) => {
 
       const potreros = readLS('potreros', {});
       const groups = readLS('groups', {});
-
-      if (!potreros[cid] || !groups[cid]) {
-        return { success: false, error: 'No se encontraron datos' };
-      }
+      if (!potreros[cid] || !groups[cid]) return { success: false, error: 'No se encontraron datos' };
 
       const potreroIdx = potreros[cid].findIndex(p => p.id === potreroId);
       const grupoIdx = groups[cid].findIndex(g => g.id === grupoId);
-
       if (potreroIdx === -1) return { success: false, error: 'Potrero no encontrado' };
       if (grupoIdx === -1) return { success: false, error: 'Grupo no encontrado' };
 
       const potrero = potreros[cid][potreroIdx];
-      const grupo = groups[cid][grupoIdx];
-
-      // Remover grupo del potrero
+      groups[cid][grupoIdx].potrero = null;
       potrero.gruposAsignados = potrero.gruposAsignados.filter(id => id !== grupoId);
 
-      // Remover potrero del grupo
-      groups[cid][grupoIdx].potrero = null;
-
-      // Recalcular ocupación actual basándose en grupos realmente asignados
-      const gruposAsignados = groups[cid].filter(g =>
-        potrero.gruposAsignados.includes(g.id)
-      );
-      potrero.ocupacionActual = gruposAsignados.reduce((total, grupo) => {
-        return total + (grupo.miembros?.length || 0);
-      }, 0);
+      const gruposAsignados = groups[cid].filter(g => potrero.gruposAsignados.includes(g.id));
+      potrero.ocupacionActual = gruposAsignados.reduce((t, g) => t + (g.miembros?.length || 0), 0);
 
       writeLS('potreros', potreros);
       writeLS('groups', groups);
 
-      return { success: true, potrero, grupo };
+      return { success: true, potrero, grupo: groups[cid][grupoIdx] };
     } catch (error) {
       console.error('Error al remover grupo del potrero:', error);
       return { success: false, error: 'Error al remover grupo' };
     }
   };
 
-  // ====== GRUPOS (NUEVO) ======
+  /* ===================== GRUPOS ===================== */
   const getCompanyGroups = () => {
     try {
       const cid = getCompanyId();
@@ -641,7 +585,6 @@ export const UserProvider = ({ children }) => {
     return arr.some(g => (g.id || g.codigo) === id);
   };
 
-  // Para AddGrupos: listar animales por especie y opcionalmente solo los sin grupo
   const listAnimals = ({ especie, onlyUngrouped } = {}) => {
     let arr = getCompanyLivestock();
     if (especie) arr = arr.filter(a => a.especie === especie);
@@ -678,7 +621,6 @@ export const UserProvider = ({ children }) => {
       groups[cid] = [newGroup, ...(groups[cid] || [])];
       writeLS('groups', groups);
 
-      // Si hay miembros, asignarlos al grupo en el ganado
       if (newGroup.miembros.length) {
         const setIds = new Set(newGroup.miembros);
         const livestock = readLS('livestock', {});
@@ -698,7 +640,6 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  // (Opcional) editar/eliminar grupo
   const updateGroup = (groupId, updateData) => {
     try {
       const cid = getCompanyId();
@@ -720,7 +661,6 @@ export const UserProvider = ({ children }) => {
       groups[cid][idx] = updatedGroup;
       writeLS('groups', groups);
 
-      // Si se actualizaron los miembros, sincronizar con los animales
       if (updateData.miembros !== undefined) {
         const livestock = readLS('livestock', {});
         if (livestock[cid]) {
@@ -733,7 +673,6 @@ export const UserProvider = ({ children }) => {
               return { ...animal, grupo: null };
             }
             if (newMembers.has(animalId) && !oldMembers.has(animalId)) {
-              // remover de otros grupos
               const allGroups = groups[cid] || [];
               allGroups.forEach((g, gIdx) => {
                 if (g.id !== groupId && g.miembros && g.miembros.includes(animalId)) {
@@ -764,41 +703,29 @@ export const UserProvider = ({ children }) => {
       const groups = readLS('groups', {});
       if (!groups[cid]) return { success: false, error: 'No hay grupos' };
 
-      // Obtener información del grupo antes de eliminarlo
       const grupoAEliminar = groups[cid].find(g => g.id === groupId);
       if (!grupoAEliminar) return { success: false, error: 'Grupo no encontrado' };
 
-      // Quitar grupo de los animales que lo tenían
       const livestock = readLS('livestock', {});
       if (livestock[cid]) {
         livestock[cid] = livestock[cid].map(a => (a.grupo === groupId ? { ...a, grupo: null } : a));
         writeLS('livestock', livestock);
       }
 
-      // Quitar grupo de cualquier potrero que lo tuviera asignado
       const potreros = readLS('potreros', {});
       if (potreros[cid]) {
         potreros[cid] = potreros[cid].map(potrero => {
           if (potrero.gruposAsignados && potrero.gruposAsignados.includes(groupId)) {
             const gruposRestantes = potrero.gruposAsignados.filter(id => id !== groupId);
-            const gruposAsignados = groups[cid].filter(g =>
-              gruposRestantes.includes(g.id) && g.id !== groupId
-            );
-            const nuevaOcupacion = gruposAsignados.reduce((total, grupo) => {
-              return total + (grupo.miembros?.length || 0);
-            }, 0);
-            return {
-              ...potrero,
-              gruposAsignados: gruposRestantes,
-              ocupacionActual: nuevaOcupacion
-            };
+            const gruposAsignados = groups[cid].filter(g => gruposRestantes.includes(g.id) && g.id !== groupId);
+            const nuevaOcupacion = gruposAsignados.reduce((t, g) => t + (g.miembros?.length || 0), 0);
+            return { ...potrero, gruposAsignados: gruposRestantes, ocupacionActual: nuevaOcupacion };
           }
           return potrero;
         });
         writeLS('potreros', potreros);
       }
 
-      // Eliminar el grupo
       groups[cid] = groups[cid].filter(g => g.id !== groupId);
       writeLS('groups', groups);
 
@@ -809,33 +736,7 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  // ====== CITAS VETERINARIAS ======
-  // Lee TODAS las citas de todas las empresas
-  const getAllCitas = () => {
-    try {
-      const mapa = readLS('citas', {}); // { companyId: [citas...] }
-      const out = [];
-      Object.entries(mapa).forEach(([companyId, arr]) => {
-        (arr || []).forEach(c => out.push({ ...c, companyId }));
-      });
-      return out;
-    } catch {
-      return [];
-    }
-  };
-
-  // Citas pendientes (sin veterinario asignado) en todo el sistema
-  const getAllPendingCitas = () => {
-    return getAllCitas().filter(c => !c.veterinarioEmail && (c.estado ?? 'pendiente') === 'pendiente');
-  };
-
-  // Citas asignadas a un veterinario (todas las empresas)
-  const getAllVetCitas = (vetEmail) => {
-    const email = (vetEmail || user?.email || '').toLowerCase();
-    return getAllCitas().filter(c => (c.veterinarioEmail || '').toLowerCase() === email);
-  };
-
-
+  /* ===================== CITAS VETERINARIAS ===================== */
   const getCompanyCitas = () => {
     try {
       const cid = getCompanyId();
@@ -848,17 +749,10 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  const getCitaById = (citaId) => {
-    const arr = getCompanyCitas();
-    return arr.find(c => c.id === citaId) || null;
-  };
-
   const addCita = (citaData) => {
     try {
       const cid = getCompanyId();
       if (!cid) return { success: false, error: 'Debes pertenecer a una empresa para agendar citas' };
-
-      // Validaciones básicas
       if (!citaData.tipo || !citaData.servicio || !citaData.fechaCita) {
         return { success: false, error: 'Tipo, servicio y fecha son requeridos' };
       }
@@ -875,8 +769,8 @@ export const UserProvider = ({ children }) => {
         fechaCita: citaData.fechaCita,
         horaCita: citaData.horaCita || '09:00',
         observaciones: citaData.observaciones || '',
-        estado: 'pendiente', // 'pendiente', 'aceptada', 'completada', 'cancelada', 'rechazada'
-        veterinarioEmail: null, // se asigna al aceptar
+        estado: 'pendiente', // 'pendiente', 'aceptada', 'completada', 'cancelada'
+        veterinarioEmail: null, // se asigna cuando un veterinario acepta
         createdAt: new Date().toISOString(),
         createdBy: user?.email || 'sistema'
       };
@@ -919,37 +813,32 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  const setCitaEstado = (citaId, estado) => {
-    return updateCita(citaId, { estado });
+  const cancelCita = (citaId) => {
+    try {
+      // cancelar independientemente de empresa (útil para vet)
+      const citas = readLS('citas', {});
+      let found = false;
+      for (const cid of Object.keys(citas)) {
+        const idx = (citas[cid] || []).findIndex(c => c.id === citaId);
+        if (idx !== -1) {
+          citas[cid][idx] = {
+            ...citas[cid][idx],
+            estado: 'cancelada',
+            canceladaAt: new Date().toISOString(),
+            canceladaBy: user?.email || 'sistema'
+          };
+          found = true;
+          break;
+        }
+      }
+      if (!found) return { success: false, error: 'Cita no encontrada' };
+      writeLS('citas', citas);
+      return { success: true };
+    } catch (e) {
+      console.error('Error al cancelar cita:', e);
+      return { success: false, error: 'Error al cancelar cita' };
+    }
   };
-
-  const acceptCita = (citaId, vetEmail) => {
-  const email = (vetEmail || user?.email || '').toLowerCase().trim();
-  if (!email) return { success: false, error: 'Veterinario no válido' };
-  return updateCitaGlobal(citaId, { estado: 'aceptada', veterinarioEmail: email });
-};
-
-const completeCita = (citaId) => {
-  return updateCitaGlobal(citaId, { estado: 'completada' });
-};
-
-const rejectCita = (citaId) => {
-  // Rechazar y liberar para que vuelva a "disponible"
-  return updateCitaGlobal(citaId, { estado: 'rechazada', veterinarioEmail: null });
-};
-
-const rescheduleCita = (citaId, { fechaCita, horaCita, observaciones }) => {
-  const patch = {};
-  if (fechaCita) patch.fechaCita = fechaCita;
-  if (horaCita) patch.horaCita = horaCita;
-  if (observaciones !== undefined) patch.observaciones = observaciones;
-  return updateCitaGlobal(citaId, patch);
-};
-
-const cancelCita = (citaId) => {
-  return cancelCitaGlobal(citaId);
-};
-
 
   const deleteCita = (citaId) => {
     try {
@@ -969,53 +858,179 @@ const cancelCita = (citaId) => {
     }
   };
 
-  const getVetCitas = (vetEmail) => {
-    const email = toEmail(vetEmail || user?.email);
-    const all = getCompanyCitas();
-    return all.filter(c => toEmail(c.veterinarioEmail) === email);
+  /* ---- Funciones extra para PERFIL DEL VETERINARIO ---- */
+
+  // Todas las citas "pendientes" de TODAS las empresas (sin vet asignado)
+  const getAllPendingCitas = () => {
+    const citas = readLS('citas', {});
+    const arr = [];
+    Object.entries(citas).forEach(([cid, cs]) => {
+      (cs || []).forEach(c => {
+        if (c.estado === 'pendiente' && !c.veterinarioEmail) {
+          arr.push({ ...c, companyId: cid });
+        }
+      });
+    });
+    // ordenar por fecha
+    arr.sort((a, b) => new Date(a.fechaCita) - new Date(b.fechaCita));
+    return arr;
   };
 
-
-  // === Helpers globales para CITAS (todas las empresas) ===
-  const findCitaAcrossCompanies = (citaId) => {
-    const mapa = readLS('citas', {}); // { companyId: [citas...] }
-    for (const [cid, arr] of Object.entries(mapa)) {
-      const idx = (arr || []).findIndex(c => c.id === citaId);
-      if (idx !== -1) return { mapa, cid, idx };
-    }
-    return { mapa: null, cid: null, idx: -1 };
+  // Citas asignadas al veterinario (de todas las empresas)
+  const getAllVetCitas = (vetEmail) => {
+    const citas = readLS('citas', {});
+    const arr = [];
+    Object.entries(citas).forEach(([cid, cs]) => {
+      (cs || []).forEach(c => {
+        if (c.veterinarioEmail === vetEmail && c.estado !== 'cancelada') {
+          arr.push({ ...c, companyId: cid });
+        }
+      });
+    });
+    arr.sort((a, b) => new Date(a.fechaCita) - new Date(b.fechaCita));
+    return arr;
   };
 
-  const updateCitaGlobal = (citaId, patch) => {
+  // Aceptar (asignar) una cita
+  const acceptCita = (citaId) => {
     try {
-      const { mapa, cid, idx } = findCitaAcrossCompanies(citaId);
-      if (!mapa || idx === -1) return { success: false, error: 'Cita no encontrada (global)' };
+      const citas = readLS('citas', {});
+      let saved = false;
+      for (const cid of Object.keys(citas)) {
+        const idx = (citas[cid] || []).findIndex(c => c.id === citaId);
+        if (idx !== -1) {
+          const target = citas[cid][idx];
+          if (target.estado === 'cancelada' || target.estado === 'completada') {
+            return { success: false, error: 'La cita ya no está disponible' };
+          }
+          citas[cid][idx] = {
+            ...target,
+            estado: 'aceptada',
+            veterinarioEmail: user?.email || target.veterinarioEmail,
+            updatedAt: new Date().toISOString(),
+            updatedBy: user?.email || 'sistema'
+          };
+          saved = true;
+          break;
+        }
+      }
+      if (!saved) return { success: false, error: 'Cita no encontrada' };
+      writeLS('citas', citas);
+      return { success: true };
+    } catch (e) {
+      console.error('acceptCita error:', e);
+      return { success: false, error: 'No se pudo aceptar la cita' };
+    }
+  };
 
-      const updated = {
-        ...mapa[cid][idx],
-        ...patch,
+  // Completar una cita
+  const completeCita = (citaId) => {
+    try {
+      const citas = readLS('citas', {});
+      let saved = false;
+      for (const cid of Object.keys(citas)) {
+        const idx = (citas[cid] || []).findIndex(c => c.id === citaId);
+        if (idx !== -1) {
+          citas[cid][idx] = {
+            ...citas[cid][idx],
+            estado: 'completada',
+            completadaAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            updatedBy: user?.email || 'sistema'
+          };
+          saved = true;
+          break;
+        }
+      }
+      if (!saved) return { success: false, error: 'Cita no encontrada' };
+      writeLS('citas', citas);
+      return { success: true };
+    } catch (e) {
+      console.error('completeCita error:', e);
+      return { success: false, error: 'No se pudo completar la cita' };
+    }
+  };
+
+  // Rechazar (liberar) una cita que ya estaba asignada al vet
+  const rejectCita = (citaId) => {
+    try {
+      const citas = readLS('citas', {});
+      let saved = false;
+      for (const cid of Object.keys(citas)) {
+        const idx = (citas[cid] || []).findIndex(c => c.id === citaId);
+        if (idx !== -1) {
+          const target = citas[cid][idx];
+          citas[cid][idx] = {
+            ...target,
+            estado: 'pendiente',
+            veterinarioEmail: null,
+            updatedAt: new Date().toISOString(),
+            updatedBy: user?.email || 'sistema'
+          };
+          saved = true;
+          break;
+        }
+      }
+      if (!saved) return { success: false, error: 'Cita no encontrada' };
+      writeLS('citas', citas);
+      return { success: true };
+    } catch (e) {
+      console.error('rejectCita error:', e);
+      return { success: false, error: 'No se pudo rechazar la cita' };
+    }
+  };
+
+  /* ===================== FUNCIONES GLOBALES (multi-empresa) ===================== */
+  const findAnimalAcrossCompanies = (animalId) => {
+    const livestock = readLS('livestock', {}); // { companyId: [animales...] }
+    for (const [cid, arr] of Object.entries(livestock)) {
+      const idx = (arr || []).findIndex(a => (a.identificacion || a.id) === animalId);
+      if (idx !== -1) return { livestock, cid, idx };
+    }
+    return { livestock: null, cid: null, idx: -1 };
+  };
+
+  const getAnimalAcrossCompanies = (animalId) => {
+    const { livestock, cid, idx } = findAnimalAcrossCompanies(animalId);
+    if (!livestock || idx === -1) return null;
+    return { ...livestock[cid][idx], companyId: cid };
+  };
+
+  const updateMedicalInfoGlobal = (animalId, medicalData) => {
+    try {
+      const { livestock, cid, idx } = findAnimalAcrossCompanies(animalId);
+      if (!livestock || idx === -1) return { success: false, error: 'Animal no encontrado (global)' };
+
+      const prev = livestock[cid][idx].informacionMedica || {};
+      const norm = {
+        historialVacunas: Array.isArray(prev.historialVacunas) ? prev.historialVacunas : [],
+        historialEnfermedades: Array.isArray(prev.historialEnfermedades) ? prev.historialEnfermedades : [],
+        proximasVacunas: Array.isArray(prev.proximasVacunas) ? prev.proximasVacunas : [],
+        tratamientosActivos: Array.isArray(prev.tratamientosActivos) ? prev.tratamientosActivos : [],
+        ...prev,
+        ...medicalData,
+      };
+
+      livestock[cid][idx] = {
+        ...livestock[cid][idx],
+        informacionMedica: {
+          ...norm,
+          fechaUltimaActualizacion: new Date().toISOString(),
+          actualizadoPor: user?.email || 'sistema',
+        },
         updatedAt: new Date().toISOString(),
         updatedBy: user?.email || 'sistema',
       };
 
-      mapa[cid][idx] = updated;
-      writeLS('citas', mapa);
-      return { success: true, cita: updated, companyId: cid };
+      writeLS('livestock', livestock);
+      return { success: true, animal: livestock[cid][idx], companyId: cid };
     } catch (e) {
-      console.error('updateCitaGlobal error:', e);
-      return { success: false, error: 'Error global al actualizar cita' };
+      console.error('updateMedicalInfoGlobal error:', e);
+      return { success: false, error: 'Error al actualizar información médica (global)' };
     }
   };
 
-  const cancelCitaGlobal = (citaId) => {
-    return updateCitaGlobal(citaId, {
-      estado: 'cancelada',
-      canceladaAt: new Date().toISOString(),
-      canceladaBy: user?.email || 'sistema',
-    });
-  };
-
-
+  /* ===================== VALUE ===================== */
   const value = {
     // Auth
     user,
@@ -1059,23 +1074,23 @@ const cancelCita = (citaId) => {
     updateGroup,
     deleteGroup,
 
-    // Citas Veterinarias
-    getAllCitas,
-    getAllPendingCitas,
-    getAllVetCitas,
-
+    // Citas Veterinarias (empresa actual)
     getCompanyCitas,
-    getCitaById,
-    getVetCitas,
     addCita,
     updateCita,
-    setCitaEstado,
+    cancelCita,
+    deleteCita,
+
+    // Citas para PERFIL VETERINARIO (multi-empresa)
+    getAllPendingCitas,
+    getAllVetCitas,
     acceptCita,
     completeCita,
     rejectCita,
-    rescheduleCita,
-    cancelCita,
-    deleteCita,
+
+    // Funciones globales (multi-empresa)
+    getAnimalAcrossCompanies,
+    updateMedicalInfoGlobal,
   };
 
   return (
