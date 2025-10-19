@@ -69,6 +69,7 @@ export const ALIMENTACION_POR_TIPO = {
     horario: "Mañana y tarde",
     suplemento: "Mezcla mineral ad libitum",
     observaciones: "Ajustar ración en lactancia / engorde",
+    costo: "5.50",
   },
   Ovino: {
     tipo: "Pastoreo de pastos cortos y leguminosas + heno",
@@ -76,6 +77,7 @@ export const ALIMENTACION_POR_TIPO = {
     horario: "Dos tomas",
     suplemento: "Concentrado en crecimiento/lactancia",
     observaciones: "Evitar empaste; rotación de potreros",
+    costo: "3.25",
   },
   Caprino: {
     tipo: "Ramoneo (arbustos/hojas) + pasto tierno y concentrado",
@@ -83,6 +85,7 @@ export const ALIMENTACION_POR_TIPO = {
     horario: "Mañana y tarde",
     suplemento: "Sales minerales específicas caprinas",
     observaciones: "Vigilancia de parásitos gastrointestinales",
+    costo: "2.80",
   },
 };
 

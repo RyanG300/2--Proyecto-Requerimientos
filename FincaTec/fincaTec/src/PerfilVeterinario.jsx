@@ -28,6 +28,11 @@ export default function PerfilVeterinario() {
   const [citaTarget, setCitaTarget] = useState(null);
   const [grupoAnimales, setGrupoAnimales] = useState([]);
 
+  // modal para costo de cita
+  const [costoModalOpen, setCostoModalOpen] = useState(false);
+  const [citaParaCompletar, setCitaParaCompletar] = useState(null);
+  const [costoCita, setCostoCita] = useState("");
+
   const cargar = () => {
     setDisponibles(getAllPendingCitas());
     setAsignadas(getAllVetCitas(user?.email));
@@ -53,8 +58,24 @@ export default function PerfilVeterinario() {
   };
 
   const handleCompletar = async (cita) => {
-    const r = await completeCita(cita.id);
-    if (r?.success) cargar();
+    setCitaParaCompletar(cita);
+    setCostoCita("");
+    setCostoModalOpen(true);
+  };
+
+  const confirmarCompletarCita = async () => {
+    if (!costoCita || parseFloat(costoCita) < 0) {
+      alert("Por favor ingrese un costo válido");
+      return;
+    }
+
+    const r = await completeCita(citaParaCompletar.id, parseFloat(costoCita));
+    if (r?.success) {
+      cargar();
+      setCostoModalOpen(false);
+      setCitaParaCompletar(null);
+      setCostoCita("");
+    }
   };
 
   const handleCancelar = async (cita) => {
@@ -288,6 +309,67 @@ export default function PerfilVeterinario() {
             />
           ) : null}
         </>
+      )}
+
+      {/* Modal para costo de cita */}
+      {costoModalOpen && citaParaCompletar && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-xl font-bold text-green-700 mb-4">
+              Completar Cita Veterinaria
+            </h3>
+            
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-600 mb-2">
+                <span className="font-semibold">Cliente:</span> {citaParaCompletar.finquero}
+              </p>
+              <p className="text-sm text-gray-600 mb-2">
+                <span className="font-semibold">Empresa:</span> {citaParaCompletar.empresa}
+              </p>
+              <p className="text-sm text-gray-600">
+                <span className="font-semibold">Tipo:</span> {citaParaCompletar.tipo}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-semibold mb-2 text-gray-700">
+                Costo Total de la Cita (₡) *
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-200"
+                value={costoCita}
+                onChange={(e) => setCostoCita(e.target.value)}
+                placeholder="0.00"
+                autoFocus
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Ingrese el costo total del servicio veterinario prestado
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => {
+                  setCostoModalOpen(false);
+                  setCitaParaCompletar(null);
+                  setCostoCita("");
+                }}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarCompletarCita}
+                className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 shadow"
+              >
+                Completar Cita
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

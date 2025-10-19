@@ -8,12 +8,13 @@ import { useUser } from './UserContext';
 function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
-  const { user, logout, getUserCompany, getCompanyLivestock, getCompanyGroups, getCompanyPotreros, syncAllPotrerosOcupacion, getCompanyCitas, deleteCita, isCompanyOwner, getCompanyAuditLogs } = useUser();
+  const { user, logout, getUserCompany, getCompanyLivestock, getCompanyGroups, getCompanyPotreros, syncAllPotrerosOcupacion, getCompanyCitas, getCompanyCitasCompletadas, deleteCita, isCompanyOwner, getCompanyAuditLogs } = useUser();
 
   const [companyLivestock, setCompanyLivestock] = useState([]);
   const [companyGroups, setCompanyGroups] = useState([]);
   const [companyPotreros, setCompanyPotreros] = useState([]);
   const [companyCitas, setCompanyCitas] = useState([]);
+  const [companyCitasCompletadas, setCompanyCitasCompletadas] = useState([]);
   const [userCompany, setUserCompany] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
 
@@ -24,6 +25,7 @@ function App() {
     const groups = getCompanyGroups ? getCompanyGroups() : [];
     const potreros = getCompanyPotreros ? getCompanyPotreros() : [];
     const citas = getCompanyCitas ? getCompanyCitas() : [];
+    const citasCompletadas = getCompanyCitasCompletadas ? getCompanyCitasCompletadas() : [];
     const logs = getCompanyAuditLogs ? getCompanyAuditLogs() : [];
 
     setUserCompany(company);
@@ -31,8 +33,9 @@ function App() {
     setCompanyGroups(groups);
     setCompanyPotreros(potreros);
     setCompanyCitas(citas);
+    setCompanyCitasCompletadas(citasCompletadas);
     setAuditLogs(logs);
-  }, [user, getUserCompany, getCompanyLivestock, getCompanyGroups, getCompanyPotreros, getCompanyCitas, getCompanyAuditLogs]);
+  }, [user, getUserCompany, getCompanyLivestock, getCompanyGroups, getCompanyPotreros, getCompanyCitas, getCompanyCitasCompletadas, getCompanyAuditLogs]);
 
   // Logout
   const handleLogout = () => {
@@ -537,6 +540,194 @@ function App() {
               </section>
             </div>
           )}
+
+          {/* Sistema de Reportes Económicos - Para todos los finqueros */}
+          <div className="w-full max-w-6xl mx-auto mt-8">
+            <section className="bg-white rounded-xl shadow-lg border-2 border-green-400 p-8">
+              <div className="w-full flex items-center justify-between mb-6">
+                <span className="text-lg font-semibold text-green-700">Reportes Económicos - Costos Operativos</span>
+                <span className="text-sm text-gray-500 italic">Alimentación y servicios veterinarios</span>
+              </div>
+
+              {/* Sección de Costos de Alimentación */}
+              <div className="mb-8">
+                <h3 className="text-md font-semibold text-green-600 mb-4">💰 Costos de Alimentación</h3>
+                {companyGroups.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    No hay grupos disponibles para generar reportes
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse border border-gray-300 rounded-lg">
+                      <thead>
+                        <tr className="bg-green-50">
+                          <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-green-800">Grupo</th>
+                          <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-green-800">Tipo de Alimentación</th>
+                          <th className="border border-gray-300 px-4 py-3 text-right font-semibold text-green-800">Costo Diario (₡)</th>
+                          <th className="border border-gray-300 px-4 py-3 text-right font-semibold text-green-800">Costo Mensual (₡)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          let totalMensualAlimentacion = 0;
+                          const rows = companyGroups.map((grupo, index) => {
+                          const costoDiario = parseFloat(grupo.alimentacion?.costo || 0);
+                          const costoMensual = costoDiario * 30;
+                          totalMensualAlimentacion += costoMensual;
+
+                          return (
+                            <tr key={grupo.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="border border-gray-300 px-4 py-3 font-medium text-gray-800">
+                                {grupo.nombre}
+                              </td>
+                              <td className="border border-gray-300 px-4 py-3 text-gray-700">
+                                {grupo.alimentacion?.tipo || 'No especificado'}
+                              </td>
+                              <td className="border border-gray-300 px-4 py-3 text-right text-gray-700">
+                                ₡{costoDiario.toFixed(2)}
+                              </td>
+                              <td className="border border-gray-300 px-4 py-3 text-right font-semibold text-green-700">
+                                ₡{costoMensual.toFixed(2)}
+                              </td>
+                            </tr>
+                          );
+                        });
+
+                        return [
+                          ...rows,
+                          <tr key="total" className="bg-blue-100 font-bold">
+                            <td className="border border-gray-300 px-4 py-3 text-right" colSpan="3">
+                              <span className="text-green-800">TOTAL MENSUAL:</span>
+                            </td>
+                            <td className="border border-gray-300 px-4 py-3 text-right text-green-800 text-lg">
+                              ₡{totalMensualAlimentacion.toFixed(2)}
+                            </td>
+                          </tr>
+                        ];
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              </div>
+
+              {/* Sección de Costos de Citas Veterinarias */}
+              <div className="mb-8">
+                <h3 className="text-md font-semibold text-green-600 mb-4">🏥 Costos de Servicios Veterinarios</h3>
+                {companyCitasCompletadas.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    No hay citas veterinarias completadas
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse border border-gray-300 rounded-lg">
+                      <thead>
+                        <tr className="bg-blue-50">
+                          <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-green-800">Fecha</th>
+                          <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-green-800">Tipo de Servicio</th>
+                          <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-green-800">Veterinario</th>
+                          <th className="border border-gray-300 px-4 py-3 text-right font-semibold text-green-800">Costo (₡)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          let totalVeterinario = 0;
+                          const rows = companyCitasCompletadas.map((cita, index) => {
+                            const costo = parseFloat(cita.costo || 0);
+                            totalVeterinario += costo;
+
+                            return (
+                              <tr key={cita.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                <td className="border border-gray-300 px-4 py-3 text-gray-700">
+                                  {new Date(cita.completadaAt).toLocaleDateString()}
+                                </td>
+                                <td className="border border-gray-300 px-4 py-3 text-gray-700">
+                                  {cita.servicio} ({cita.tipo})
+                                </td>
+                                <td className="border border-gray-300 px-4 py-3 text-gray-700">
+                                  {cita.veterinarioEmail}
+                                </td>
+                                <td className="border border-gray-300 px-4 py-3 text-right font-semibold text-green-700">
+                                  ₡{costo.toFixed(2)}
+                                </td>
+                              </tr>
+                            );
+                          });
+
+                          return [
+                            ...rows,
+                            <tr key="total-veterinario" className="bg-green-100 font-bold">
+                              <td className="border border-gray-300 px-4 py-3 text-right" colSpan="3">
+                                <span className="text-green-800">SUBTOTAL VETERINARIO:</span>
+                              </td>
+                              <td className="border border-gray-300 px-4 py-3 text-right text-green-800 text-lg">
+                                ₡{totalVeterinario.toFixed(2)}
+                              </td>
+                            </tr>
+                          ];
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Resumen Total */}
+              {(companyGroups.length > 0 || companyCitasCompletadas.length > 0) && (
+                <div className="border-t-2 border-gray-200 pt-6">
+                  <div className="bg-gradient-to-r from-green-100 to-blue-100 rounded-lg p-6">
+                    <h3 className="text-lg font-bold text-center text-gray-800 mb-4">📊 Resumen Total de Costos</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                      <div className="bg-white rounded-lg p-4 shadow">
+                        <p className="text-sm text-gray-600">Alimentación Mensual</p>
+                        <p className="text-xl font-bold text-green-700">
+                          ₡{(() => {
+                            let total = 0;
+                            companyGroups.forEach(grupo => {
+                              total += parseFloat(grupo.alimentacion?.costo || 0) * 30;
+                            });
+                            return total.toFixed(2);
+                          })()}
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg p-4 shadow">
+                        <p className="text-sm text-gray-600">Servicios Veterinarios</p>
+                        <p className="text-xl font-bold text-green-700">
+                          ₡{companyCitasCompletadas.reduce((total, cita) => total + parseFloat(cita.costo || 0), 0).toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg p-4 shadow border-2 border-gray-400">
+                        <p className="text-sm text-gray-600 font-semibold">TOTAL GENERAL</p>
+                        <p className="text-2xl font-bold text-gray-800">
+                          ₡{(() => {
+                            let totalAlimentacion = 0;
+                            companyGroups.forEach(grupo => {
+                              totalAlimentacion += parseFloat(grupo.alimentacion?.costo || 0) * 30;
+                            });
+                            const totalVeterinario = companyCitasCompletadas.reduce((total, cita) => total + parseFloat(cita.costo || 0), 0);
+                            return (totalAlimentacion + totalVeterinario).toFixed(2);
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-gray-600 text-lg">💡</span>
+                  <span className="font-semibold text-gray-800">Información del Reporte:</span>
+                </div>
+                <ul className="text-sm text-gray-700 space-y-1 ml-6 list-disc">
+                  <li>Los costos de alimentación se calculan multiplicando el costo diario por 30 días</li>
+                  <li>Los costos veterinarios incluyen todas las citas completadas con costo registrado</li>
+                  <li>Este reporte incluye todos los grupos activos y servicios de la empresa</li>
+                  <li>Los totales permiten planificar presupuestos y controlar gastos operativos</li>
+                </ul>
+              </div>
+            </section>
+          </div>
         </main>
 
         {/* Footer */}

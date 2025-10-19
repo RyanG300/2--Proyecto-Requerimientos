@@ -859,6 +859,19 @@ export const UserProvider = ({ children }) => {
     }
   };
 
+  const getCompanyCitasCompletadas = () => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return [];
+      const citas = readLS('citas', {});
+      const companyCitas = citas[cid] || [];
+      return companyCitas.filter(cita => cita.estado === 'completada' && cita.costo !== undefined);
+    } catch (e) {
+      console.error('Error al obtener citas completadas:', e);
+      return [];
+    }
+  };
+
   const addCita = (citaData) => {
     try {
       const cid = getCompanyId();
@@ -1005,7 +1018,7 @@ export const UserProvider = ({ children }) => {
     const arr = [];
     Object.entries(citas).forEach(([cid, cs]) => {
       (cs || []).forEach(c => {
-        if (c.veterinarioEmail === vetEmail && c.estado !== 'cancelada') {
+        if (c.veterinarioEmail === vetEmail && c.estado !== 'cancelada' && c.estado !== 'completada') {
           arr.push({ ...c, companyId: cid });
         }
       });
@@ -1047,10 +1060,12 @@ export const UserProvider = ({ children }) => {
   };
 
   // Completar una cita
-  const completeCita = (citaId) => {
+  const completeCita = (citaId, costo = 0) => {
     try {
       const citas = readLS('citas', {});
       let saved = false;
+      let citaCompletada = null;
+      
       for (const cid of Object.keys(citas)) {
         const idx = (citas[cid] || []).findIndex(c => c.id === citaId);
         if (idx !== -1) {
@@ -1059,14 +1074,27 @@ export const UserProvider = ({ children }) => {
             estado: 'completada',
             completadaAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            updatedBy: user?.email || 'sistema'
+            updatedBy: user?.email || 'sistema',
+            costo: parseFloat(costo) || 0
           };
+          citaCompletada = citas[cid][idx];
           saved = true;
           break;
         }
       }
       if (!saved) return { success: false, error: 'Cita no encontrada' };
+      
       writeLS('citas', citas);
+      
+      // Registrar en auditoría
+      if (citaCompletada) {
+        addAuditLog(
+          'CITA_COMPLETED',
+          `Completó cita veterinaria para ${citaCompletada.empresa} - Costo: ₡${parseFloat(costo).toFixed(2)}`,
+          citaCompletada.companyId
+        );
+      }
+      
       return { success: true };
     } catch (e) {
       console.error('completeCita error:', e);
@@ -1199,6 +1227,7 @@ export const UserProvider = ({ children }) => {
 
     // Citas Veterinarias (empresa actual)
     getCompanyCitas,
+    getCompanyCitasCompletadas,
     addCita,
     updateCita,
     cancelCita,

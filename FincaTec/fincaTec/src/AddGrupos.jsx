@@ -38,6 +38,7 @@ function AddGrupo() {
       horario: "",
       suplemento: "",
       observaciones: "",
+      costo: "",
     },
     miembros: [],           // ids de animales seleccionados
   });
@@ -398,6 +399,21 @@ function AddGrupo() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
                   placeholder="Mezcla mineral ad libitum"
                   required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-1">
+                  Costo por día
+                </label>
+                <input
+                  name="costo"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.alimentacion.costo}
+                  onChange={handleAlimentacionChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
+                  placeholder="0.00"
                 />
               </div>
               <div className="md:col-span-2">

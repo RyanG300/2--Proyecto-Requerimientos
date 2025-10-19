@@ -71,6 +71,7 @@ export default function VisualizarGruposPastoreo() {
       horario: "-",
       suplemento: "-",
       observaciones: "-",
+      costo: "0.00",
     });
 
   const [alimentacionActual, setAlimentacionActual] = useState(baseAlim);
@@ -96,6 +97,7 @@ export default function VisualizarGruposPastoreo() {
     horario: "",
     suplemento: "",
     observaciones: "",
+    costo: "",
   };
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
@@ -327,6 +329,12 @@ export default function VisualizarGruposPastoreo() {
                 <span className="font-semibold">Observaciones:</span>{" "}
                 {alimentacionActual.observaciones}
               </p>
+              <p>
+                <span className="font-semibold">Costo por día:</span>{" "}
+                <span className="text-green-600 font-semibold">
+                  ₡{parseFloat(alimentacionActual.costo || 0).toFixed(2)}
+                </span>
+              </p>
             </div>
 
             {/* Botones */}
@@ -373,7 +381,9 @@ export default function VisualizarGruposPastoreo() {
                         <span className="font-semibold">Cant.:</span>{" "}
                         {h.data.cantidad} —{" "}
                         <span className="font-semibold">Horario:</span>{" "}
-                        {h.data.horario}
+                        {h.data.horario} —{" "}
+                        <span className="font-semibold">Costo:</span>{" "}
+                        ₡{parseFloat(h.data.costo || 0).toFixed(2)}
                       </div>
                     </li>
                   ))}
@@ -660,6 +670,23 @@ export default function VisualizarGruposPastoreo() {
                       {errors.suplemento}
                     </p>
                   )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-1">
+                    Costo (₡)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-200"
+                    value={form.costo}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, costo: e.target.value }))
+                    }
+                    placeholder="0.00"
+                  />
                 </div>
 
                 <div>
