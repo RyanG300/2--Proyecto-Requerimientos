@@ -21,8 +21,7 @@ import AgendarCita from './AgendarCita.jsx';
 import EditarCita from './EditarCita.jsx';
 import AuthenticatedHome from './AuthenticatedHome.jsx';
 
-import RegisterVet from './RegisterVet.jsx';
-import VetProfile from './VetProfile.jsx';
+import PerfilVeterinario from "./PerfilVeterinario";
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -34,10 +33,17 @@ createRoot(document.getElementById('root')).render(
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          
+          <Route path="/menu" element={<MainMenu />} />
 
 
-         
+          <Route path="/perfil-veterinario" element={<PerfilVeterinario />} />
+
+          {/* Rutas protegidas */}
+          <Route path="/company-view" element={
+            <ProtectedRoute>
+              <CompanyView />
+            </ProtectedRoute>
+          } />
 
           <Route path="/App" element={
             <ProtectedRoute>
@@ -94,23 +100,23 @@ createRoot(document.getElementById('root')).render(
               <Perfil />
             </ProtectedRoute>
           } />
-          <Route path="/add-grupos" element={
-            <ProtectedRoute>
-              <AddGrupos />
-            </ProtectedRoute>
-          } />
+              <Route path="/add-grupos" element={
+                <ProtectedRoute>
+                  <AddGrupos />
+                </ProtectedRoute>
+              } />
 
-          <Route path="/agendar-cita" element={
-            <ProtectedRoute>
-              <AgendarCita />
-            </ProtectedRoute>
-          } />
+              <Route path="/agendar-cita" element={
+                <ProtectedRoute>
+                  <AgendarCita />
+                </ProtectedRoute>
+              } />
 
-          <Route path="/editar-cita/:citaId" element={
-            <ProtectedRoute>
-              <EditarCita />
-            </ProtectedRoute>
-          } />
+              <Route path="/editar-cita/:citaId" element={
+                <ProtectedRoute>
+                  <EditarCita />
+                </ProtectedRoute>
+              } />
 
         </Routes>
       </BrowserRouter>
