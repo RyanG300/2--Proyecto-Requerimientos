@@ -191,6 +191,50 @@ export const UserProvider = ({ children }) => {
     return c?.id || null;
   };
 
+  /* ===================== SISTEMA DE AUDITORÍA ===================== */
+  const addAuditLog = (action, details) => {
+    try {
+      const cid = getCompanyId();
+      if (!cid || !user) return;
+
+      const logs = readLS('auditLogs', {});
+      if (!logs[cid]) logs[cid] = [];
+
+      const logEntry = {
+        id: `LOG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        timestamp: new Date().toISOString(),
+        user: user.name || user.email,
+        userEmail: user.email,
+        action,
+        details,
+        companyId: cid
+      };
+
+      logs[cid].push(logEntry);
+      
+      // Mantener solo los últimos 100 logs por empresa
+      if (logs[cid].length > 100) {
+        logs[cid] = logs[cid].slice(-100);
+      }
+
+      writeLS('auditLogs', logs);
+    } catch (e) {
+      console.error('Error al registrar acción de auditoría:', e);
+    }
+  };
+
+  const getCompanyAuditLogs = () => {
+    try {
+      const cid = getCompanyId();
+      if (!cid) return [];
+      const logs = readLS('auditLogs', {});
+      return (logs[cid] || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    } catch (e) {
+      console.error('Error al obtener logs de auditoría:', e);
+      return [];
+    }
+  };
+
   /* ===================== GANADO ===================== */
   const checkAreteExists = (arete) => {
     try {
@@ -243,6 +287,9 @@ export const UserProvider = ({ children }) => {
 
       livestock[cid].push(newAnimal);
       writeLS('livestock', livestock);
+
+      // Registrar en auditoría
+      addAuditLog('ANIMAL_ADDED', `Agregó un nuevo animal: ${animalData.nombre} (ID: ${animalData.identificacion}), Especie: ${animalData.especie}`);
 
       return { success: true, animal: newAnimal };
     } catch (error) {
@@ -318,7 +365,23 @@ export const UserProvider = ({ children }) => {
             }
           }
           writeLS('groups', groups);
+          
+          // Registrar en auditoría el cambio de grupo
+          const animalName = livestock[cid][idx].nombre || animalId;
+          if (oldGroup && newGroup) {
+            addAuditLog('ANIMAL_GROUP_CHANGED', `Movió el animal "${animalName}" del grupo "${oldGroup}" al grupo "${newGroup}"`);
+          } else if (oldGroup && !newGroup) {
+            addAuditLog('ANIMAL_REMOVED_FROM_GROUP', `Removió el animal "${animalName}" del grupo "${oldGroup}"`);
+          } else if (!oldGroup && newGroup) {
+            addAuditLog('ANIMAL_ADDED_TO_GROUP', `Agregó el animal "${animalName}" al grupo "${newGroup}"`);
+          }
         }
+      } else if (updateData.nombre && updateData.nombre !== oldAnimal.nombre) {
+        // Registrar cambios de nombre
+        addAuditLog('ANIMAL_UPDATED', `Cambió el nombre del animal de "${oldAnimal.nombre}" a "${updateData.nombre}"`);
+      } else if (Object.keys(updateData).length > 0) {
+        // Otros cambios generales
+        addAuditLog('ANIMAL_UPDATED', `Actualizó la información del animal "${livestock[cid][idx].nombre}"`);
       }
 
       return { success: true, animal: livestock[cid][idx] };
@@ -377,8 +440,16 @@ export const UserProvider = ({ children }) => {
       const livestock = readLS('livestock', {});
       if (!livestock[cid]) return { success: false, error: 'No se encontró ganado en esta empresa' };
 
+      // Buscar el animal antes de eliminarlo para el log
+      const animal = livestock[cid].find(a => a.id === animalId);
+      const animalName = animal ? animal.nombre : animalId;
+
       livestock[cid] = livestock[cid].filter(a => a.id !== animalId);
       writeLS('livestock', livestock);
+
+      // Registrar en auditoría
+      addAuditLog('ANIMAL_DELETED', `Eliminó el animal: ${animalName} (ID: ${animalId})`);
+
       return { success: true };
     } catch (error) {
       console.error('Error al eliminar animal:', error);
@@ -425,6 +496,9 @@ export const UserProvider = ({ children }) => {
 
       potreros[cid].push(newPotrero);
       writeLS('potreros', potreros);
+
+      // Registrar en auditoría
+      addAuditLog('POTRERO_ADDED', `Agregó un nuevo potrero: ${potreroData.nombre} (Capacidad: ${potreroData.capacidad}, Ubicación: ${potreroData.provincia}, ${potreroData.canton})`);
 
       return { success: true, potrero: newPotrero };
     } catch (error) {
@@ -478,6 +552,9 @@ export const UserProvider = ({ children }) => {
 
       writeLS('potreros', potreros);
       writeLS('groups', groups);
+
+      // Registrar en auditoría
+      addAuditLog('GROUP_ASSIGNED', `Asignó el grupo "${grupo.nombre}" (${grupo.miembros?.length || 0} animales) al potrero "${potrero.nombre}"`);
 
       return { success: true, potrero, grupo };
     } catch (error) {
@@ -558,6 +635,10 @@ export const UserProvider = ({ children }) => {
       writeLS('potreros', potreros);
       writeLS('groups', groups);
 
+      // Registrar en auditoría
+      const grupo = groups[cid][grupoIdx];
+      addAuditLog('GROUP_REMOVED_FROM_POTRERO', `Removió el grupo "${grupo.nombre}" (${grupo.miembros?.length || 0} animales) del potrero "${potrero.nombre}"`);
+
       return { success: true, potrero, grupo: groups[cid][grupoIdx] };
     } catch (error) {
       console.error('Error al remover grupo del potrero:', error);
@@ -633,6 +714,9 @@ export const UserProvider = ({ children }) => {
         writeLS('livestock', livestock);
       }
 
+      // Registrar en auditoría
+      addAuditLog('GROUP_CREATED', `Creó el grupo de pastoreo "${newGroup.nombre}" (ID: ${id}) con ${newGroup.miembros.length} miembros`);
+
       return { success: true, group: newGroup };
     } catch (error) {
       console.error('Error al crear grupo:', error);
@@ -689,6 +773,29 @@ export const UserProvider = ({ children }) => {
         }
       }
 
+      // Registrar en auditoría cambios de miembros
+      if (updateData.miembros !== undefined) {
+        const oldMembers = new Set(oldGroup.miembros || []);
+        const newMembers = new Set(updateData.miembros || []);
+        
+        const removedMembers = [...oldMembers].filter(id => !newMembers.has(id));
+        const addedMembers = [...newMembers].filter(id => !oldMembers.has(id));
+        
+        if (removedMembers.length > 0 || addedMembers.length > 0) {
+          let details = `Modificó los miembros del grupo "${updatedGroup.nombre}": `;
+          if (addedMembers.length > 0) {
+            details += `Agregó ${addedMembers.length} animales (${addedMembers.join(', ')})`;
+          }
+          if (removedMembers.length > 0) {
+            if (addedMembers.length > 0) details += '; ';
+            details += `Removió ${removedMembers.length} animales (${removedMembers.join(', ')})`;
+          }
+          addAuditLog('GROUP_MEMBERS_UPDATED', details);
+        }
+      } else {
+        addAuditLog('GROUP_UPDATED', `Actualizó el grupo "${updatedGroup.nombre}"`);
+      }
+
       return { success: true, group: updatedGroup };
     } catch (e) {
       console.error('Error al actualizar grupo:', e);
@@ -728,6 +835,9 @@ export const UserProvider = ({ children }) => {
 
       groups[cid] = groups[cid].filter(g => g.id !== groupId);
       writeLS('groups', groups);
+
+      // Registrar en auditoría
+      addAuditLog('GROUP_DELETED', `Eliminó el grupo "${grupoAEliminar.nombre}" que contenía ${grupoAEliminar.miembros?.length || 0} animales`);
 
       return { success: true };
     } catch (e) {
@@ -777,6 +887,12 @@ export const UserProvider = ({ children }) => {
 
       citas[cid] = [newCita, ...(citas[cid] || [])];
       writeLS('citas', citas);
+
+      // Registrar en auditoría
+      const servicioText = citaData.servicio === 'chequeo' ? 'Chequeo médico' : 
+                          citaData.servicio === 'vacunacion' ? 'Vacunación' : 
+                          citaData.servicio === 'desparasitacion' ? 'Desparasitación' : citaData.servicio;
+      addAuditLog('CITA_SCHEDULED', `Agendó cita veterinaria: ${servicioText} para "${citaData.objetivoNombre}" el ${new Date(citaData.fechaCita).toLocaleDateString()}`);
 
       return { success: true, cita: newCita };
     } catch (error) {
@@ -848,8 +964,15 @@ export const UserProvider = ({ children }) => {
       const citas = readLS('citas', {});
       if (!citas[cid]) return { success: false, error: 'No hay citas' };
 
+      // Buscar la cita antes de eliminarla para el log
+      const cita = citas[cid].find(c => c.id === citaId);
+      const citaName = cita ? cita.objetivoNombre : citaId;
+
       citas[cid] = citas[cid].filter(c => c.id !== citaId);
       writeLS('citas', citas);
+
+      // Registrar en auditoría
+      addAuditLog('CITA_CANCELLED', `Canceló la cita veterinaria para "${citaName}"`);
 
       return { success: true };
     } catch (e) {
@@ -1091,6 +1214,9 @@ export const UserProvider = ({ children }) => {
     // Funciones globales (multi-empresa)
     getAnimalAcrossCompanies,
     updateMedicalInfoGlobal,
+
+    // Sistema de auditoría
+    getCompanyAuditLogs,
   };
 
   return (

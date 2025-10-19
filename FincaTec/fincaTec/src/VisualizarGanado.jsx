@@ -6,14 +6,28 @@ import UserContext from "./UserContext";
 function VisualizarGanado() {
   const { id } = useParams(); // ID del animal (arete)
   const navigate = useNavigate();
-  const { user, getCompanyLivestock, deleteAnimal } = useContext(UserContext);
+  const { user, getCompanyLivestock, deleteAnimal, getCompanyGroups, updateAnimal } = useContext(UserContext);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [editingField, setEditingField] = useState(null);
+  const [editValue, setEditValue] = useState("");
+  const [localAnimal, setLocalAnimal] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Obtener todos los animales de la empresa del usuario
   const animals = getCompanyLivestock();
 
   // Buscar el animal específico por su ID (arete)
-  const animal = animals.find((a) => a.identificacion === id || a.id === id);
+  const animal = localAnimal || animals.find((a) => a.identificacion === id || a.id === id);
+
+  // Inicializar el animal local cuando se carga por primera vez
+  if (!localAnimal && animal) {
+    setLocalAnimal(animal);
+  }
+
+  // Obtener información del grupo si el animal pertenece a uno
+  const grupos = getCompanyGroups();
+  const grupoInfo = animal?.grupo ? grupos.find(g => g.id === animal.grupo || g.codigo === animal.grupo) : null;
 
   // ===== helpers médicos =====
   const med = animal?.informacionMedica || {};
@@ -37,6 +51,111 @@ function VisualizarGanado() {
   // Función para editar el animal
   const handleEdit = () => {
     navigate(`/add-ganado?edit=${animal.id}`);
+  };
+
+  // Funciones para edición inline
+  const startEdit = (field, currentValue) => {
+    setEditingField(field);
+    setEditValue(currentValue || "");
+  };
+
+  const cancelEdit = () => {
+    setEditingField(null);
+    setEditValue("");
+  };
+
+  const saveEdit = async () => {
+    if (!editingField || !animal) return;
+
+    setSaving(true);
+    const updateData = { [editingField]: editValue };
+    const result = updateAnimal(animal.id, updateData);
+
+    if (result.success) {
+      // Actualizar el animal local
+      setLocalAnimal(prev => ({
+        ...prev,
+        [editingField]: editValue
+      }));
+      setEditingField(null);
+      setEditValue("");
+    } else {
+      alert("Error al actualizar: " + result.error);
+    }
+    setSaving(false);
+  };
+
+  // Función para cambiar la foto
+  const handlePhotoChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setUploadingPhoto(true);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = updateAnimal(animal.id, { foto: e.target.result });
+        if (result.success) {
+          setLocalAnimal(prev => ({
+            ...prev,
+            foto: e.target.result
+          }));
+        } else {
+          alert("Error al actualizar la foto: " + result.error);
+        }
+        setUploadingPhoto(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Función para renderizar campo editable
+  const renderEditableField = (field, label, currentValue, type = "text") => {
+    const isEditing = editingField === field;
+    
+    return (
+      <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+        <span className="font-bold text-green-800">{label}:</span>
+        {isEditing ? (
+          <div className="flex items-center gap-2">
+            <input
+              type={type}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1 text-sm w-32"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') saveEdit();
+                if (e.key === 'Escape') cancelEdit();
+              }}
+            />
+            <button
+              onClick={saveEdit}
+              className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs"
+              disabled={saving}
+            >
+              {saving ? "..." : "✓"}
+            </button>
+            <button
+              onClick={cancelEdit}
+              className="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs"
+            >
+              ✗
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-gray-700 font-medium">{currentValue}</span>
+            <button
+              onClick={() => startEdit(field, currentValue)}
+              className="text-blue-600 hover:text-blue-800 text-xs"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (!animal) {
@@ -64,14 +183,15 @@ function VisualizarGanado() {
             Detalles del Animal
           </h1>
           <div className="flex justify-center gap-4 mb-6">
+            {/* Botón de regreso */}
             <button
-              onClick={handleEdit}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow font-semibold flex items-center gap-2"
+              onClick={() => navigate(-1)}
+              className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg shadow font-semibold flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              Editar
+              Volver
             </button>
             <button
               onClick={() => setShowDeleteConfirm(true)}
@@ -90,17 +210,43 @@ function VisualizarGanado() {
           <div className="bg-white rounded-2xl shadow-xl p-8 border-4 border-green-300">
             <h2 className="text-2xl font-bold text-green-700 mb-6 text-center">
               📋 Información del Animal
+              <span className="block text-sm font-normal text-gray-600 mt-1">
+                Haz clic en el ícono ✏️ para editar cada campo
+              </span>
             </h2>
 
             <div className="flex flex-col items-center mb-6">
-              <img
-                src={animal.foto || "/images/Ganado_Relleno/default-animal.png"}
-                alt={animal.nombre}
-                className="w-32 h-32 object-cover rounded-xl border-4 border-green-400 mb-4"
-              />
+              <div className="relative">
+                <img
+                  src={animal.foto || "/images/Ganado_Relleno/default-animal.png"}
+                  alt={animal.nombre}
+                  className="w-32 h-32 object-cover rounded-xl border-4 border-green-400 mb-4"
+                />
+                {uploadingPhoto && (
+                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-xl flex items-center justify-center">
+                    <div className="text-white text-sm">Subiendo...</div>
+                  </div>
+                )}
+                <label className="absolute bottom-2 right-2 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full cursor-pointer shadow-lg">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className="hidden"
+                    disabled={uploadingPhoto}
+                  />
+                </label>
+              </div>
               <h3 className="text-2xl font-extrabold text-green-700">
                 {animal.nombre}
               </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Haz clic en 📷 para cambiar la foto
+              </p>
             </div>
 
             <div className="space-y-3">
@@ -109,30 +255,12 @@ function VisualizarGanado() {
                 <span className="text-gray-700 font-medium">{animal.id}</span>
               </div>
 
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="font-bold text-green-800">Especie:</span>
-                <span className="text-gray-700 font-medium">{animal.especie}</span>
-              </div>
-
-              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                <span className="font-bold text-green-800">Raza:</span>
-                <span className="text-gray-700 font-medium">{animal.raza}</span>
-              </div>
-
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="font-bold text-green-800">Sexo:</span>
-                <span className="text-gray-700 font-medium">{animal.sexo}</span>
-              </div>
-
-              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                <span className="font-bold text-green-800">Fecha de Nacimiento:</span>
-                <span className="text-gray-700 font-medium">{animal.fechaNacimiento}</span>
-              </div>
-
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="font-bold text-green-800">Peso:</span>
-                <span className="text-gray-700 font-medium">{animal.peso} kg</span>
-              </div>
+              {renderEditableField("nombre", "Nombre", animal.nombre)}
+              {renderEditableField("especie", "Especie", animal.especie)}
+              {renderEditableField("raza", "Raza", animal.raza)}
+              {renderEditableField("sexo", "Sexo", animal.sexo)}
+              {renderEditableField("fechaNacimiento", "Fecha de Nacimiento", animal.fechaNacimiento, "date")}
+              {renderEditableField("peso", "Peso (kg)", animal.peso, "number")}
 
               <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
                 <span className="font-bold text-green-800">Grupo:</span>
@@ -149,50 +277,101 @@ function VisualizarGanado() {
               🐄 Información del Grupo
             </h2>
 
-            {animal.grupo ? (
+            {animal.grupo && grupoInfo ? (
               <div className="text-center">
                 <div className="mb-6">
                   <img
-                    src="/images/Menu_finqueros/grupo-pastoreo.png"
-                    alt="Grupo de pastoreo"
+                    src={grupoInfo.foto || "/images/Menu_finqueros/grupo-pastoreo.png"}
+                    alt={`Grupo ${grupoInfo.nombre || animal.grupo}`}
                     className="w-32 h-32 object-cover rounded-xl border-4 border-orange-400 mx-auto mb-4"
+                    onError={(e) => {
+                      e.target.src = "/images/Menu_finqueros/grupo-pastoreo.png";
+                    }}
                   />
                   <h3 className="text-2xl font-extrabold text-orange-700">
-                    {animal.grupo}
+                    {grupoInfo.nombre || animal.grupo}
                   </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Código: {grupoInfo.codigo || grupoInfo.id}
+                  </p>
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
-                    <span className="font-bold text-orange-800">Tipo de Grupo:</span>
-                    <span className="text-gray-700 font-medium">Pastoreo</span>
+                    <span className="font-bold text-orange-800">Especie del Grupo:</span>
+                    <span className="text-gray-700 font-medium">{grupoInfo.especie || 'No especificada'}</span>
                   </div>
 
                   <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                     <span className="font-bold text-orange-800">Animales en el Grupo:</span>
                     <span className="text-gray-700 font-medium">
-                      {animals.filter((a) => a.grupo === animal.grupo).length}
+                      {grupoInfo.miembros ? grupoInfo.miembros.length : animals.filter((a) => a.grupo === animal.grupo).length}
                     </span>
                   </div>
 
                   <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
+                    <span className="font-bold text-orange-800">Objetivo:</span>
+                    <span className="text-gray-700 font-medium">{grupoInfo.objetivo || 'Pastoreo'}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                     <span className="font-bold text-orange-800">Estado:</span>
                     <span className="px-3 py-1 rounded-full bg-green-200 text-green-900 font-semibold text-sm">
                       Activo
                     </span>
                   </div>
 
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <span className="font-bold text-orange-800 block mb-2">Ubicación Actual:</span>
-                    <span className="text-gray-700 text-sm">Potrero asignado para pastoreo rotativo</span>
-                  </div>
+                  {grupoInfo.potrero && (
+                    <div className="p-3 bg-orange-50 rounded-lg">
+                      <span className="font-bold text-orange-800 block mb-2">Potrero Asignado:</span>
+                      <span className="text-gray-700 text-sm">{grupoInfo.potrero}</span>
+                    </div>
+                  )}
 
-                  <div className="p-3 bg-orange-50 rounded-lg">
-                    <span className="font-bold text-orange-800 block mb-2">Notas:</span>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <span className="font-bold text-orange-800 block mb-2">Creado:</span>
                     <span className="text-gray-700 text-sm">
-                      Grupo de pastoreo en rotación. Se mueve cada 15 días aproximadamente.
+                      {grupoInfo.createdAt ? new Date(grupoInfo.createdAt).toLocaleDateString() : 'Fecha no disponible'}
+                      {grupoInfo.createdBy && (
+                        <span className="block text-xs text-gray-500 mt-1">
+                          por: {grupoInfo.createdBy}
+                        </span>
+                      )}
                     </span>
                   </div>
+
+                  {grupoInfo.alimentacion && Object.keys(grupoInfo.alimentacion).length > 0 && (
+                    <div className="p-3 bg-orange-50 rounded-lg">
+                      <span className="font-bold text-orange-800 block mb-2">Alimentación:</span>
+                      <div className="text-gray-700 text-sm space-y-1">
+                        {Object.entries(grupoInfo.alimentacion).map(([key, value]) => (
+                          <div key={key} className="flex justify-between">
+                            <span className="capitalize">{key}:</span>
+                            <span>{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : animal.grupo && !grupoInfo ? (
+              <div className="text-center text-gray-500">
+                <div className="mb-6">
+                  <svg className="w-24 h-24 mx-auto text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-400 mb-4">Grupo No Encontrado</h3>
+                <p className="text-gray-400 mb-2">
+                  Este animal está asignado al grupo <strong>{animal.grupo}</strong>
+                </p>
+                <p className="text-gray-400 text-sm">
+                  Pero no se encontró información detallada del grupo.
+                </p>
+                <div className="mt-4 p-3 bg-gray-100 rounded-lg text-sm">
+                  <span className="font-medium">Animales con este grupo:</span>{" "}
+                  {animals.filter((a) => a.grupo === animal.grupo).length}
                 </div>
               </div>
             ) : (
@@ -335,19 +514,6 @@ function VisualizarGanado() {
               {med.actualizadoPor ? ` · por ${med.actualizadoPor}` : ""}
             </div>
           )}
-        </div>
-
-        {/* Botón de regreso */}
-        <div className="flex justify-center mt-10">
-          <button
-            onClick={() => navigate(-1)}
-            className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg shadow font-semibold flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Volver
-          </button>
         </div>
       </div>
 

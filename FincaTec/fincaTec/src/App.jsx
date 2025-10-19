@@ -8,13 +8,14 @@ import { useUser } from './UserContext';
 function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
-  const { user, logout, getUserCompany, getCompanyLivestock, getCompanyGroups, getCompanyPotreros, syncAllPotrerosOcupacion, getCompanyCitas, deleteCita, isCompanyOwner } = useUser();
+  const { user, logout, getUserCompany, getCompanyLivestock, getCompanyGroups, getCompanyPotreros, syncAllPotrerosOcupacion, getCompanyCitas, deleteCita, isCompanyOwner, getCompanyAuditLogs } = useUser();
 
   const [companyLivestock, setCompanyLivestock] = useState([]);
   const [companyGroups, setCompanyGroups] = useState([]);
   const [companyPotreros, setCompanyPotreros] = useState([]);
   const [companyCitas, setCompanyCitas] = useState([]);
   const [userCompany, setUserCompany] = useState(null);
+  const [auditLogs, setAuditLogs] = useState([]);
 
   // Cargar datos al montar / cuando cambie el usuario
   useEffect(() => {
@@ -23,13 +24,15 @@ function App() {
     const groups = getCompanyGroups ? getCompanyGroups() : [];
     const potreros = getCompanyPotreros ? getCompanyPotreros() : [];
     const citas = getCompanyCitas ? getCompanyCitas() : [];
+    const logs = getCompanyAuditLogs ? getCompanyAuditLogs() : [];
 
     setUserCompany(company);
     setCompanyLivestock(livestock);
     setCompanyGroups(groups);
     setCompanyPotreros(potreros);
     setCompanyCitas(citas);
-  }, [user, getUserCompany, getCompanyLivestock, getCompanyGroups, getCompanyPotreros, getCompanyCitas]);
+    setAuditLogs(logs);
+  }, [user, getUserCompany, getCompanyLivestock, getCompanyGroups, getCompanyPotreros, getCompanyCitas, getCompanyAuditLogs]);
 
   // Logout
   const handleLogout = () => {
@@ -51,6 +54,8 @@ function App() {
         // Recargar datos de potreros después de la sincronización
         const updatedPotreros = getCompanyPotreros();
         setCompanyPotreros(updatedPotreros);
+        // Recargar logs de auditoría
+        setAuditLogs(getCompanyAuditLogs());
       } else {
         alert(`Error: ${result.error}`);
       }
@@ -71,6 +76,8 @@ function App() {
           setCompanyCitas(prevCitas =>
             prevCitas.filter(cita => cita.id !== citaId)
           );
+          // Recargar logs de auditoría
+          setAuditLogs(getCompanyAuditLogs());
         } else {
           alert(`Error: ${result.error}`);
         }
@@ -117,7 +124,7 @@ function App() {
         {/* Header */}
 
         <header className="w-full flex items-center justify-between px-6 py-3 bg-gradient-to-r from-green-500 via-green-400 to-green-300 shadow-md">
-          <img src="/images/Menu_finquero/icono_FincaTec.png" alt="FincaTec Logo" />
+          <img src="/images/Menu_finqueros/icono_FincaTec.png" alt="FincaTec Logo" className='bg-white rounded-3xl p-1 shadow-md w-20'/>
 
 
 
@@ -429,10 +436,111 @@ function App() {
               </div>
             </section>
           </div>
+
+          {/* Sistema de Auditoría - Solo para propietarios */}
+          {isCompanyOwner() && (
+            <div className="w-full max-w-6xl mx-auto mt-8">
+              <section className="bg-white rounded-xl shadow-lg border-2 border-green-400 h-[400px] flex flex-col p-8">
+                <div className="w-full flex items-center justify-between mb-4">
+                  <span className="text-lg font-semibold text-green-700">Sistema de Auditoría</span>
+                  <span className="text-sm text-gray-500 italic">Solo visible para propietarios</span>
+                </div>
+
+                <div className="w-full flex-1 overflow-y-auto">
+                  {auditLogs.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      No hay registros de auditoría disponibles
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {auditLogs.slice(0, 20).map((log) => {
+                        const fecha = new Date(log.timestamp);
+                        const fechaFormat = fecha.toLocaleDateString();
+                        const horaFormat = fecha.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        
+                        // Iconos y colores según el tipo de acción
+                        const getActionStyle = (action) => {
+                          switch (action) {
+                            case 'ANIMAL_ADDED':
+                              return { icon: '🐄', color: 'text-green-700', bg: 'bg-green-50', border: 'border-l-green-400' };
+                            case 'ANIMAL_DELETED':
+                              return { icon: '🗑️', color: 'text-red-700', bg: 'bg-red-50', border: 'border-l-red-400' };
+                            case 'POTRERO_ADDED':
+                              return { icon: '🌾', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-l-blue-400' };
+                            case 'GROUP_CREATED':
+                              return { icon: '👥', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-l-purple-400' };
+                            case 'GROUP_ASSIGNED':
+                              return { icon: '📍', color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-l-orange-400' };
+                            case 'GROUP_MEMBERS_UPDATED':
+                              return { icon: '✏️', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-l-amber-400' };
+                            case 'GROUP_UPDATED':
+                              return { icon: '📝', color: 'text-indigo-700', bg: 'bg-indigo-50', border: 'border-l-indigo-400' };
+                            case 'CITA_SCHEDULED':
+                              return { icon: '📅', color: 'text-teal-700', bg: 'bg-teal-50', border: 'border-l-teal-400' };
+                            case 'CITA_CANCELLED':
+                              return { icon: '❌', color: 'text-red-700', bg: 'bg-red-50', border: 'border-l-red-400' };
+                            case 'GROUP_REMOVED_FROM_POTRERO':
+                              return { icon: '↩️', color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-l-yellow-400' };
+                            case 'GROUP_DELETED':
+                              return { icon: '🗑️', color: 'text-red-700', bg: 'bg-red-50', border: 'border-l-red-400' };
+                            case 'ANIMAL_GROUP_CHANGED':
+                              return { icon: '🔄', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-l-blue-400' };
+                            case 'ANIMAL_REMOVED_FROM_GROUP':
+                              return { icon: '➖', color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-l-orange-400' };
+                            case 'ANIMAL_ADDED_TO_GROUP':
+                              return { icon: '➕', color: 'text-green-700', bg: 'bg-green-50', border: 'border-l-green-400' };
+                            case 'ANIMAL_UPDATED':
+                              return { icon: '✏️', color: 'text-cyan-700', bg: 'bg-cyan-50', border: 'border-l-cyan-400' };
+                            default:
+                              return { icon: '📋', color: 'text-gray-700', bg: 'bg-gray-50', border: 'border-l-gray-400' };
+                          }
+                        };
+
+                        const actionStyle = getActionStyle(log.action);
+
+                        return (
+                          <div 
+                            key={log.id} 
+                            className={`${actionStyle.bg} ${actionStyle.border} rounded-lg p-3 border-l-4 shadow-sm`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-start gap-3 flex-1">
+                                <span className="text-xl">{actionStyle.icon}</span>
+                                <div className="flex-1 min-w-0">
+                                  <div className={`font-semibold ${actionStyle.color} text-sm`}>
+                                    {log.user}
+                                  </div>
+                                  <div className="text-gray-800 text-sm mt-1">
+                                    {log.details}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-xs text-gray-500 text-right whitespace-nowrap ml-4">
+                                <div>{fechaFormat}</div>
+                                <div>{horaFormat}</div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      
+                      {auditLogs.length > 20 && (
+                        <div className="text-center py-4">
+                          <span className="text-sm text-gray-500">
+                            Mostrando los 20 registros más recientes de {auditLogs.length} totales
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </section>
+            </div>
+          )}
         </main>
 
         {/* Footer */}
-        <footer className="bottom-0 left-0 w-full bg-gradient-to-r from-green-500 via-green-400 to-green-300 text-white text-center py-3 shadow-lg font-semibold tracking-wide mt-8">
+        <footer className="bottom-0 left-0 w-full bg-gradient-to-r from-green-500 via-green-400 to-green-300 text-white text-center py-3 shadow-lg font-semibold tracking-wide mt-12">
           <p>&copy; 2025 FincaTec. All rights reserved.</p>
         </footer>
       </div>

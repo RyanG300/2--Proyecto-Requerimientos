@@ -89,7 +89,7 @@ export default function VetMedicalEditor({ animalId, open, onClose, onSaved }) {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4">
       <div className="w-full max-w-4xl max-h-[85vh] bg-white rounded-2xl shadow-xl flex flex-col">
         {/* Header sticky */}
         <div className="px-6 py-4 border-b sticky top-0 bg-white rounded-t-2xl z-10 flex items-center justify-between">

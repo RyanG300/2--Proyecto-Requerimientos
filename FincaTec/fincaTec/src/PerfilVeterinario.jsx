@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "./UserContext";
-import VetMedicalEditor from "./components/VetMedicalEditor"; // ← asegúrate de esta ruta
+import VetMedicalEditor from "./components/VetMedicalEditor";
+import VetGroupMedicalEditor from "./components/VetGroupMedicalEditor";
 
 export default function PerfilVeterinario() {
   const {
@@ -12,7 +13,9 @@ export default function PerfilVeterinario() {
     acceptCita,
     completeCita,
     cancelCita,
-    rejectCita, // ← nueva acción
+    rejectCita,
+    getCompanyGroups,
+    getCompanyLivestock,
   } = useUser();
 
   const navigate = useNavigate();
@@ -22,6 +25,8 @@ export default function PerfilVeterinario() {
   // modal editor médico
   const [medOpen, setMedOpen] = useState(false);
   const [animalTarget, setAnimalTarget] = useState(null);
+  const [citaTarget, setCitaTarget] = useState(null);
+  const [grupoAnimales, setGrupoAnimales] = useState([]);
 
   const cargar = () => {
     setDisponibles(getAllPendingCitas());
@@ -62,13 +67,92 @@ export default function PerfilVeterinario() {
     if (r?.success) cargar();
   };
 
+  // Funciones auxiliares para acceder a datos de cualquier empresa
+  const getGroupsFromCompany = (companyId) => {
+    try {
+      const groups = JSON.parse(localStorage.getItem('groups') || '{}');
+      return groups[companyId] || [];
+    } catch (e) {
+      console.error('Error al obtener grupos de empresa:', e);
+      return [];
+    }
+  };
+
+  const getAnimalsFromCompany = (companyId) => {
+    try {
+      const livestock = JSON.parse(localStorage.getItem('livestock') || '{}');
+      return livestock[companyId] || [];
+    } catch (e) {
+      console.error('Error al obtener animales de empresa:', e);
+      return [];
+    }
+  };
+
   const abrirEditor = (cita) => {
-    if (cita.tipo !== "individual") {
-      alert("Para citas de grupo, abre el animal desde el módulo de ganado.");
+    console.log("🔍 Abriendo editor para cita:", cita);
+    console.log("🔍 Tipo de cita:", cita.tipo);
+    console.log("🔍 ObjetivoId de la cita:", cita.objetivoId, "tipo:", typeof cita.objetivoId);
+    console.log("🔍 Company ID de la cita:", cita.companyId);
+    setCitaTarget(cita);
+    
+    if (cita.tipo === "individual") {
+      console.log("📝 Cita individual, animal ID:", cita.objetivoId);
+      setAnimalTarget(cita.objetivoId); // ID del animal individual
+      setGrupoAnimales([]);
+    } else if (cita.tipo === "grupo") {
+      console.log("👥 Cita de grupo, buscando grupo ID:", cita.objetivoId);
+      
+      // Buscar el grupo usando la ID de la cita en la empresa específica
+      const grupos = getGroupsFromCompany(cita.companyId);
+      console.log("📂 Grupos disponibles en empresa:", grupos);
+      console.log("📂 IDs de grupos:", grupos.map(g => ({ id: g.id, codigo: g.codigo, nombre: g.nombre })));
+      
+      // Intentar varias formas de buscar el grupo
+      const grupo1 = grupos.find(g => g.id === cita.objetivoId);
+      const grupo2 = grupos.find(g => g.codigo === cita.objetivoId);
+      const grupo3 = grupos.find(g => g.id === cita.objetivoId?.toString());
+      const grupo4 = grupos.find(g => g.codigo === cita.objetivoId?.toString());
+      
+      console.log("🎯 Búsqueda por id === objetivoId:", grupo1);
+      console.log("🎯 Búsqueda por codigo === objetivoId:", grupo2);
+      console.log("🎯 Búsqueda por id === objetivoId.toString():", grupo3);
+      console.log("🎯 Búsqueda por codigo === objetivoId.toString():", grupo4);
+      
+      const grupo = grupo1 || grupo2 || grupo3 || grupo4;
+      console.log("🎯 Grupo final encontrado:", grupo);
+      
+      if (!grupo) {
+        alert(`Grupo no encontrado. Buscando ID/código: "${cita.objetivoId}" en empresa: "${cita.companyId}"`);
+        return;
+      }
+      
+      // Obtener todos los animales de la empresa específica
+      const todosAnimales = getAnimalsFromCompany(cita.companyId);
+      console.log("🐄 Todos los animales de la empresa:", todosAnimales);
+      console.log("🐄 Miembros del grupo:", grupo.miembros);
+      
+      // Filtrar animales que están en el grupo (usando las IDs de los miembros)
+      const animalesDelGrupo = todosAnimales.filter(animal => 
+        grupo.miembros && grupo.miembros.includes(animal.identificacion || animal.id)
+      );
+      console.log("🎯 Animales del grupo:", animalesDelGrupo);
+      
+      setGrupoAnimales(animalesDelGrupo);
+      setAnimalTarget(null);
+    } else {
+      alert("Tipo de cita no reconocido.");
       return;
     }
-    setAnimalTarget(cita.objetivoId); // arete/ID del animal
+    
+    console.log("🚀 Abriendo modal...");
     setMedOpen(true);
+  };
+
+  const cerrarModal = () => {
+    setMedOpen(false);
+    setAnimalTarget(null);
+    setCitaTarget(null);
+    setGrupoAnimales([]);
   };
 
   const handleLogout = () => {
@@ -179,17 +263,31 @@ export default function PerfilVeterinario() {
         )}
       </section>
 
-      {/* Modal para editar información médica del animal */}
-      {medOpen && (
-        <VetMedicalEditor
-          animalId={animalTarget}
-          open={medOpen}
-          onClose={() => setMedOpen(false)}
-          onSaved={() => {
-            setMedOpen(false);
-            cargar(); // refresca por si quieres ver cambios en la UI
-          }}
-        />
+      {/* Modal para editar información médica */}
+      {medOpen && citaTarget && (
+        <>
+          {citaTarget.tipo === "individual" ? (
+            <VetMedicalEditor
+              animalId={animalTarget}
+              open={medOpen}
+              onClose={cerrarModal}
+              onSaved={() => {
+                cerrarModal();
+                cargar(); // refresca por si quieres ver cambios en la UI
+              }}
+            />
+          ) : citaTarget.tipo === "grupo" ? (
+            <VetGroupMedicalEditor
+              animales={grupoAnimales}
+              open={medOpen}
+              onClose={cerrarModal}
+              onSaved={() => {
+                cerrarModal();
+                cargar(); // refresca por si quieres ver cambios en la UI
+              }}
+            />
+          ) : null}
+        </>
       )}
     </div>
   );
